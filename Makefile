@@ -13,12 +13,9 @@ endif
 
 BIN = bin
 OD = obj
-#LIBS = -lboost_filesystem -lboost_system -lboost_serialization -ltag -lprofiler
 LIBS = -lboost_filesystem -lboost_system -lboost_serialization -ltag $(TARG_LIBS)
 GD = Makefile
-#GD = 
-CF = -std=c++11 -Wall -g -DCPP11 $(TARG_CF)
-#CF = -Wall -g
+CF = -std=c++11 -Wall -g $(TARG_CF)
 
 OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o $(OD)/main.o \
 	   $(OD)/audio_tags.o  $(OD)/tracks_db.o 
@@ -27,6 +24,12 @@ S_OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o $(OD)/s_main.o
 	   $(OD)/audio_tags.o  $(OD)/songs_db.o $(OD)/sstring.o
 
 all: $(BIN)/rtags $(BIN)/s_rtags $(BIN)/exp $(BIN)/bsearch $(BIN)/sort_example $(BIN)/ios
+
+.PHONY: clean
+
+clean:
+	rm -f $(OD)/*
+	rm -f $(BIN)/*
 
 $(BIN)/rtags: $(OBJS)
 	g++ $(CF) -o $(BIN)/rtags $^ $(LIBDIRS) $(LIBS)
@@ -63,12 +66,6 @@ $(OD)/main.o: main.cpp scanner.h $(GD)
 
 $(OD)/s_main.o: s_main.cpp sstring.h songs_db.h scanner.h audio_tags.h audio_file_tags.h
 	g++ $(CF) -c -o $(@) $< 
-
-.PHONY: clean
-
-clean:
-	rm -f $(OD)/*
-	rm -f $(BIN)/*
 
 bin/sort_example: $(OD)/sort_example.o
 	g++ -o $(@) $<
