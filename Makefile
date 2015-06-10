@@ -3,12 +3,12 @@ TARG_ARCH=$(shell uname -m)
 ifeq ($(TARG_ARCH),x86_64)
 	LIBDIRS = -L/usr/lib/x86_64-linux-gnu
 	TARG_LIBS = -lprofiler
-	TARG_DEFS = -DPROFILER
+	TARG_CF = -DPROFILER
 endif
 ifeq ($(TARG_ARCH),armv6l)
 	LIBDIRS = -L/usr/lib/arm-linux-gnueabihf
 	TARG_LIBS =
-	TARG_DEFS =
+	TARG_CF =
 endif
 
 BIN = bin
@@ -17,8 +17,8 @@ OD = obj
 LIBS = -lboost_filesystem -lboost_system -lboost_serialization -ltag $(TARG_LIBS)
 GD = Makefile
 #GD = 
-CF = -std=c++11 -Wall -g -DCPP11
-CF = -Wall -g
+CF = -std=c++11 -Wall -g -DCPP11 $(TARG_CF)
+#CF = -Wall -g
 
 OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o $(OD)/main.o \
 	   $(OD)/audio_tags.o  $(OD)/tracks_db.o 

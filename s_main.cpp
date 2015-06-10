@@ -10,8 +10,27 @@
 #include "audio_file_tags.h"
 #include <vector>
 
-#include <gperftools/profiler.h>
 bool profile = false;
+#ifdef  PROFILER        
+#include <gperftools/profiler.h>
+inline void profile_start(const char *pf)
+{
+    if (profile)
+        ProfilerStart(pf);
+}
+inline void profile_stop()
+{
+    if (profile)
+        ProfilerStop();
+}
+#else
+inline void profile_start(const char *pf)
+{
+}
+inline void profile_stop()
+{
+}
+#endif
 
 const char *commands [] = {
     "nop",
@@ -34,37 +53,31 @@ void process_command(const char *cmd, audio_file_tags::AudioFileRecordStore& rec
 
     if (0 == strcmp(cmd, "scan"))
     {
-        if (profile)
-            ProfilerStart("s_rtags.scan.prof");
+        profile_start("s_rtags.scan.prof");
         Scanner::Scanner scanner(record_store);
         for(unsigned ix=0; ix < args.size(); ix++)
             scanner.scan(args[ix]);
-        if (profile)
-            ProfilerStop();
+        profile_stop();
     }
     if (0 == strcmp(cmd, "load"))
     {
-        if (profile)
-            ProfilerStart("s_rtags.load.prof");
+        profile_start("s_rtags.load.prof");
         sstring::load("songs_db_cchars.dat");
         std::cout << " cchars loaded" << std::endl;
         audio_tags::load();
         std::cout << " audio_tags loaded" << std::endl;
         record_store.load();
         std::cout << " record_store loaded" << std::endl;
-        if (profile)
-            ProfilerStop();
+        profile_stop();
     }
     if (0 == strcmp(cmd, "save"))
     {
-        if (profile)
-            ProfilerStart("s_rtags.save.prof");
+        profile_start("s_rtags.save.prof");
         record_store.save();
         audio_tags::save();
         sstring::prune();
         sstring::save("data/songs_db_cchars.dat");
-        if (profile)
-            ProfilerStop();
+        profile_stop();
     }
     if (0 == strcmp(cmd, "dump"))
     {
