@@ -222,7 +222,7 @@ void SongInfo::dump()
 //audio_file_tags::AudioFileRecordStore* new_record_store(const char *database_location, const char *string_defs_file)
 audio_file_tags::AudioFileRecordStore* new_record_store()
 {
-    return new record_store::RecordStore<sstring::String, SongInfo>("songs_db.dat");
+    return new record_store::RecordStore<sstring::String, SongInfo>("data/songs_db.dat");
 }
 
 } //namespace songs_db
