@@ -1,9 +1,20 @@
-#TARG_ARCH = arm-linux-gnueabihf
-TARG_ARCH = x86_64-linux-gnu
+TARG_ARCH=$(shell uname -m)
+
+ifeq ($(TARG_ARCH),x86_64)
+	LIBDIRS = -L/usr/lib/x86_64-linux-gnu
+	TARG_LIBS = -lprofiler
+	TARG_DEFS = -DPROFILER
+endif
+ifeq ($(TARG_ARCH),armv6l)
+	LIBDIRS = -L/usr/lib/arm-linux-gnueabihf
+	TARG_LIBS =
+	TARG_DEFS =
+endif
+
 BIN = bin
 OD = obj
-LIBS = -lboost_filesystem -lboost_system -lboost_serialization -ltag -lprofiler
-LIBDIRS = -L/usr/lib/$(TARG_ARCH)
+#LIBS = -lboost_filesystem -lboost_system -lboost_serialization -ltag -lprofiler
+LIBS = -lboost_filesystem -lboost_system -lboost_serialization -ltag $(TARG_LIBS)
 GD = Makefile
 #GD = 
 CF = -std=c++11 -Wall -g -DCPP11
