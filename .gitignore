@@ -13,6 +13,7 @@ data/*
 *.out
 cscope.*
 *.swp
+*.prof
  
 # Packages #
 ############
