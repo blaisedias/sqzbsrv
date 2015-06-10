@@ -392,6 +392,7 @@ void String::bind(unsigned new_id)
     if(new_id && (id_cc_map.count(new_id)==0))
     {
         // bind to unknown string.
+        std::cerr << " bind to " << new_id << " failed" << std::endl;
         throw std::logic_error("sstring::String::bind(unsigned id) id is not present in the registry");
     }
 
