@@ -94,11 +94,7 @@ class TrackInfoImpl : audio_file_tags::AudioFileRecord {
 #ifdef  DEBUG           
             std::cout << "pimpl update " << this  << " " << ixtag << " " << value << std::endl;
 #endif
-#ifdef  CPP11
             infomap.emplace(ixtag, value);
-#else
-            infomap[ixtag] = value;
-#endif
 #ifdef  DEBUG           
             std::cout << "pimpl update emplace done." << std::endl;
 #endif
@@ -205,7 +201,7 @@ class TrackInfoImpl : audio_file_tags::AudioFileRecord {
 
 audio_file_tags::AudioFileRecordStore* new_record_store()
 {
-    return new record_store::RecordStore<std::string, TrackInfoImpl>("tracks_db.dat");
+    return new record_store::RecordStore<std::string, TrackInfoImpl>("data/tracks_db.dat");
 }
 
 } // namespace tracks_db
