@@ -122,11 +122,6 @@ void dump()
 {
             for(unsigned ix=0; ix < supported_tags.size(); ix++)
                 std::cout << ix << ")" << supported_tags[ix]  << std::endl;
-#ifdef  CPP11
-            std::cout << " ==C++11 " << std::endl;
-#else
-            std::cout << " < C++11 " << std::endl;
-#endif
 }
 
 
