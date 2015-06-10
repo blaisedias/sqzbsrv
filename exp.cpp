@@ -19,7 +19,7 @@ vector<sstring::String> strings;
 
 int main(int argc, char *argv[])
 {
-    sstring::load("exp_cchars.dat");
+    sstring::load("data/exp_cchars.dat");
 if(cc_dump)
     sstring::dump();
     strings.reserve(100);

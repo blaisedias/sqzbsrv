@@ -62,7 +62,7 @@ void process_command(const char *cmd, audio_file_tags::AudioFileRecordStore& rec
     if (0 == strcmp(cmd, "load"))
     {
         profile_start("s_rtags.load.prof");
-        sstring::load("songs_db_cchars.dat");
+        sstring::load("data/songs_db_cchars.dat");
         std::cout << " cchars loaded" << std::endl;
         audio_tags::load();
         std::cout << " audio_tags loaded" << std::endl;
