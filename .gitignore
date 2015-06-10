@@ -9,6 +9,7 @@
 bin/*
 obj/*
 txts/*
+txt/*
 data/*
 *.out
 cscope.*
