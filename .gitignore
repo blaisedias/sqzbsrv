@@ -12,6 +12,7 @@ txts/*
 data/*
 *.out
 cscope.*
+*.swp
  
 # Packages #
 ############
