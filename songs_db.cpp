@@ -236,7 +236,14 @@ template <typename KeyType, typename RecordType> void fsave(const char* filename
     {
         std::ofstream ofs(filename);
         boost::archive::text_oarchive ar(ofs);
-        ar << records;
+        std::size_t num_records=records.size();
+        ar << num_records;
+        for(typename std::map<KeyType, RecordType>::const_iterator itr=records.begin();
+                itr != records.end(); ++itr)
+        {
+            ar << itr->first;
+            ar << itr->second;
+        }
     }
 }
 
@@ -244,7 +251,16 @@ template <typename KeyType, typename RecordType> void fload(const char* filename
 {
         std::ifstream ifs(filename);
         boost::archive::text_iarchive ar(ifs);
-        ar >> records;
+        std::size_t num_records;
+        ar >> num_records;
+        while(num_records--)
+        {
+            KeyType key;
+            RecordType rec;
+            ar >> key;
+            ar >> rec;
+            records.emplace(key,rec);
+        }
 }
 
 template <typename KeyType> static void save_vec(const char *filename, std::vector<KeyType> svec)
