@@ -5,6 +5,11 @@ ifeq ($(TARG_ARCH),x86_64)
 	TARG_LIBS = -lprofiler
 	TARG_CF = -DPROFILER
 endif
+ifeq ($(TARG_ARCH),i686)
+	LIBDIRS = 
+	TARG_LIBS = -lprofiler
+	TARG_CF = -DPROFILER
+endif
 ifeq ($(TARG_ARCH),armv6l)
 	LIBDIRS = -L/usr/lib/arm-linux-gnueabihf
 	TARG_LIBS =
