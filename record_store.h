@@ -5,7 +5,7 @@
 #include "audio_file_tags.h"
 
 namespace record_store {
-// Serialisation support functions, are externalised, so that they can be serialised as required.
+// Serialisation support functions, are externalised, so that they can be serialised as desired.
 // These functions must be defined in the file where the record store is instantiated.
 template <typename KeyType, typename RecordType> void fload(const char* location, std::map<KeyType, RecordType>&);
 template <typename KeyType, typename RecordType> void fsave(const char* location, const std::map<KeyType, RecordType>&);
