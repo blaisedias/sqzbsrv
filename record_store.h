@@ -1,15 +1,15 @@
 #ifndef RECORD_STORE_H_INCLUDED
 #define RECORD_STORE_H_INCLUDED
 
-#include <map>
+#include <unordered_map>
 #include "audio_file_tags.h"
 
 namespace record_store {
 // Serialisation support functions, are externalised, so that they can be serialised as desired.
 // These functions must be defined in the file where the record store is instantiated.
-template <typename KeyType, typename RecordType> void fload(const char* location, std::map<KeyType, RecordType>&);
-template <typename KeyType, typename RecordType> void fsave(const char* location, const std::map<KeyType, RecordType>&);
-template <typename KeyType, typename RecordType> void ftest(const std::map<KeyType, RecordType>&);
+template <typename KeyType, typename RecordType> void fload(const char* location, std::unordered_map<KeyType, RecordType>&);
+template <typename KeyType, typename RecordType> void fsave(const char* location, const std::unordered_map<KeyType, RecordType>&);
+template <typename KeyType, typename RecordType> void ftest(const std::unordered_map<KeyType, RecordType>&);
 
 // template implementing the AudioFileRecordStore interface.
 // class KeyType must 1) implement function c_str() which returns null terminated const char * to the contents.
@@ -20,7 +20,7 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
 {
     private:
         // file records table
-        std::map<KeyType, RecordType> records;
+        std::unordered_map<KeyType, RecordType> records;
         // file records storage location
         std::string records_location;
     public:
@@ -79,7 +79,7 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         // Enumerate all records and refresh them by invoking the supplied function.
         void refresh_records(int (*updatefn)(const char *, AudioFileRecordStore&))
         {
-            for(typename std::map<KeyType, RecordType>::iterator itr=records.begin();
+            for(typename std::unordered_map<KeyType, RecordType>::iterator itr=records.begin();
                     itr != records.end(); ++itr)
             {
 //                RecordType &ti = itr->second;
@@ -90,7 +90,7 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         // debug helper function. FIXME: take an ostream for maximum flexibility.
         void dump_records()
         {
-            for(typename std::map<KeyType, RecordType>::iterator itr=records.begin();
+            for(typename std::unordered_map<KeyType, RecordType>::iterator itr=records.begin();
                     itr != records.end(); ++itr)
             {
                 itr->second.dump();

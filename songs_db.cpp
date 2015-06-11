@@ -1,4 +1,3 @@
-#include <map>
 #include <unordered_map>
 #include <iostream>
 #include <memory>
@@ -6,7 +5,6 @@
 
 // for serialisation
 #include <fstream>
-#include <boost/serialization/map.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #include <sstream>
@@ -256,14 +254,14 @@ audio_file_tags::AudioFileRecordStore* new_record_store()
 } //namespace songs_db
 
 namespace record_store {
-template <typename KeyType, typename RecordType> void fsave(const char* filename, const std::map<KeyType, RecordType>& records)
+template <typename KeyType, typename RecordType> void fsave(const char* filename, const std::unordered_map<KeyType, RecordType>& records)
 {
     {
         std::ofstream ofs(filename);
         boost::archive::text_oarchive ar(ofs);
         std::size_t num_records=records.size();
         ar << num_records;
-        for(typename std::map<KeyType, RecordType>::const_iterator itr=records.begin();
+        for(typename std::unordered_map<KeyType, RecordType>::const_iterator itr=records.begin();
                 itr != records.end(); ++itr)
         {
             ar << itr->first;
@@ -272,7 +270,7 @@ template <typename KeyType, typename RecordType> void fsave(const char* filename
     }
 }
 
-template <typename KeyType, typename RecordType> void fload(const char* filename, std::map<KeyType, RecordType>& records)
+template <typename KeyType, typename RecordType> void fload(const char* filename, std::unordered_map<KeyType, RecordType>& records)
 {
         std::ifstream ifs(filename);
         boost::archive::text_iarchive ar(ifs);
@@ -302,7 +300,7 @@ template <typename KeyType> static void save_vec(const char *filename, std::vect
     }
 }
 
-template <typename KeyType, typename RecordType> void ftest(const std::map<KeyType, RecordType>& records)
+template <typename KeyType, typename RecordType> void ftest(const std::unordered_map<KeyType, RecordType>& records)
 {
     static const sstring::String artist_tag(audio_tags::ARTIST);
     static const sstring::String album_tag(audio_tags::ALBUM);
@@ -313,7 +311,7 @@ template <typename KeyType, typename RecordType> void ftest(const std::map<KeyTy
     std::vector<KeyType> titles;
     std::vector<KeyType> albums;
     std::vector<KeyType> genres;
-    for(typename std::map<KeyType, RecordType>::const_iterator itr=records.begin();
+    for(typename std::unordered_map<KeyType, RecordType>::const_iterator itr=records.begin();
             itr != records.end(); ++itr)
     {
         RecordType& tii = const_cast<RecordType&>(itr->second);

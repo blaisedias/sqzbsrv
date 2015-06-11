@@ -208,31 +208,40 @@ audio_file_tags::AudioFileRecordStore* new_record_store()
 
 
 namespace record_store {
-template <typename KeyType, typename RecordType> void fsave(const char* filename, const std::map<KeyType, RecordType>& records)
+template <typename KeyType, typename RecordType> void fsave(const char* filename, const std::unordered_map<KeyType, RecordType>& records)
 {
     {
         std::ofstream ofs(filename);
         boost::archive::text_oarchive ar(ofs);
-
-        ar << records;
+        std::size_t num_records=records.size();
+        ar << num_records;
+        for(typename std::unordered_map<KeyType, RecordType>::const_iterator itr=records.begin();
+                itr != records.end(); ++itr)
+        {
+            ar << itr->first;
+            ar << itr->second;
+        }
     }
 }
 
-template <typename KeyType, typename RecordType> void fload(const char* filename, std::map<KeyType, RecordType>& records)
+template <typename KeyType, typename RecordType> void fload(const char* filename, std::unordered_map<KeyType, RecordType>& records)
 {
-    try
-    {
         std::ifstream ifs(filename);
         boost::archive::text_iarchive ar(ifs);
-        ar >> records;
-    }
-    catch(...)
-    {
-    }
+        std::size_t num_records;
+        ar >> num_records;
+        while(num_records--)
+        {
+            KeyType key;
+            RecordType rec;
+            ar >> key;
+            ar >> rec;
+            records.emplace(key,rec);
+        }
 }
 
 
-template <typename KeyType, typename RecordType> void ftest(const std::map<KeyType, RecordType>& records)
+template <typename KeyType, typename RecordType> void ftest(const std::unordered_map<KeyType, RecordType>& records)
 {
     std::vector<KeyType> artists;
     std::vector<KeyType> titles;
@@ -243,7 +252,7 @@ template <typename KeyType, typename RecordType> void ftest(const std::map<KeyTy
     int ix_album = audio_tags::index_of_supported(std::string(audio_tags::ALBUM));
     int ix_title = audio_tags::index_of_supported(std::string(audio_tags::TITLE));
     int ix_genre = audio_tags::index_of_supported(std::string(audio_tags::GENRE));
-    for(typename std::map<KeyType, RecordType>::const_iterator itr=records.begin();
+    for(typename std::unordered_map<KeyType, RecordType>::const_iterator itr=records.begin();
             itr != records.end(); ++itr)
     {
         // FIXME: Naughty casting away constness
