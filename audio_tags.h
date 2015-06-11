@@ -32,5 +32,8 @@ namespace audio_tags
     int  index_of_supported(const std::string &);
     const std::string& value_of_supported(int ix);
     int extend_supported(const std::string &);
+
+    void get_supported_taglist(std::vector<std::string> &);
+    void get_unsupported_taglist(std::vector<std::string> &);
 }
 #endif

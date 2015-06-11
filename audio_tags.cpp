@@ -157,4 +157,14 @@ int extend_supported_tag(const std::string& tag)
     return ixtag;
 }
 
+void get_supported_taglist(std::vector<std::string> &v)
+{
+    std::copy(supported_tags.begin(), supported_tags.end(), std::back_inserter(v));
+}
+
+void get_unsupported_taglist(std::vector<std::string> &v)
+{
+    std::copy(unsupported_tags.begin(), unsupported_tags.end(), std::back_inserter(v));
+}
+
 } //namespace
