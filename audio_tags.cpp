@@ -150,11 +150,8 @@ const std::string& value_of_supported(int ix)
 int extend_supported_tag(const std::string& tag)
 {
     int ixtag = supported_tags.size();
-#ifdef  CPP11
     supported_tags.emplace_back(tag);
-#else
-    supported_tags.push_back(tag);
-#endif
+//    supported_tags.push_back(tag);
     supported_tags_map[tag] = ixtag;
     supported_tags_write_required = true;
     return ixtag;
