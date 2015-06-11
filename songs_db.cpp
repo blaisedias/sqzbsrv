@@ -1,4 +1,5 @@
 #include <map>
+#include <unordered_map>
 #include <iostream>
 #include <memory>
 #include <boost/filesystem.hpp>
@@ -18,7 +19,7 @@
 static bool debug=true;
 
 namespace songs_db {
-typedef std::map<sstring::String, sstring::String> INFOMAP;
+typedef std::unordered_map<sstring::String, sstring::String> INFOMAP;
 
 //static sstring::String fp_tag(audio_tags::FILEPATH);
 //static sstring::String dir_tag(audio_tags::DIRECTORY);
@@ -81,13 +82,37 @@ class SongInfo : audio_file_tags::AudioFileRecord {
         ~SongInfo(){}
 
         template <class Archive>
-        void serialize(Archive &ar,  const unsigned int version)
+        void save(Archive &ar,  const unsigned int version) const
         {
           ar & complete;
           ar & file_length;
           ar & file_timestamp;
-          ar & infomap;
+          std::size_t infomap_len = infomap.size();
+          ar & infomap_len;
+          for(INFOMAP::const_iterator itr2=infomap.begin(); itr2 != infomap.end(); ++itr2)
+          {
+              ar & itr2->first;
+              ar & itr2->second;
+          }
         }
+        template <class Archive>
+        void load(Archive &ar,  const unsigned int version)
+        {
+          ar & complete;
+          ar & file_length;
+          ar & file_timestamp;
+          std::size_t infomap_len;
+          ar & infomap_len;
+          while(infomap_len--)
+          {
+              sstring::String key;
+              sstring::String value;
+              ar & key;
+              ar & value;
+              infomap.emplace(key, value);
+          }
+        }
+        BOOST_SERIALIZATION_SPLIT_MEMBER();
 
         void update(const std::string tag, const std::string value);
         void update(const char * tag, const char *value);
