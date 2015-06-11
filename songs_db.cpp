@@ -18,6 +18,8 @@
 static bool debug=true;
 
 namespace songs_db {
+typedef std::map<sstring::String, sstring::String> INFOMAP;
+
 //static sstring::String fp_tag(audio_tags::FILEPATH);
 //static sstring::String dir_tag(audio_tags::DIRECTORY);
 static sstring::String fp_tag;
@@ -68,7 +70,7 @@ class SongInfo : audio_file_tags::AudioFileRecord {
         uintmax_t file_length;
         time_t file_timestamp;
         bool complete;
-        std::map<sstring::String, sstring::String> infomap;
+        INFOMAP infomap;
         void init(const sstring::String& filename);
         void initS();
 
@@ -98,7 +100,7 @@ class SongInfo : audio_file_tags::AudioFileRecord {
 
         sstring::String get(sstring::String tag)
         {
-            std::map<sstring::String, sstring::String>::iterator find = infomap.find(tag);
+            INFOMAP::iterator find = infomap.find(tag);
             if (find == infomap.end())
                 return unknown;
             return find->second;
@@ -147,7 +149,8 @@ void SongInfo::update(const std::string tag, const std::string value)
         return;
 //    std::cout << "Update {{{{{{{{  " << tag << " = " << value << std::endl;
 //    infomap[sstring::String(tag)] = sstring::String(value);
-    infomap[tag] = value;
+//    infomap[tag] = value;
+    infomap.emplace(tag, value);
 //    std::cout << "}}}}}}}}" << std::endl;
     complete = false;
 }
@@ -186,7 +189,7 @@ void SongInfo::update(const std::string tag, int value)
 void SongInfo::update_start()
 {
     complete = false;
-    for(std::map<sstring::String, sstring::String>::iterator itr=infomap.begin();
+    for(INFOMAP::iterator itr=infomap.begin();
             itr != infomap.end(); ++itr)
     {
         if ((itr->first == fp_tag) || (itr->first == dir_tag))
@@ -212,7 +215,7 @@ bool SongInfo::update_required()
 void SongInfo::dump()
 {
     std::cout << "Complete :" << complete << " Len: " << file_length  << " mtime:"  << file_timestamp <<  std::endl;
-    for(std::map<sstring::String, sstring::String>::iterator itr2=infomap.begin(); itr2 != infomap.end(); ++itr2)
+    for(INFOMAP::iterator itr2=infomap.begin(); itr2 != infomap.end(); ++itr2)
     {
         std::cout << itr2->first << " : " << itr2->second << std::endl;
     }
@@ -233,7 +236,6 @@ template <typename KeyType, typename RecordType> void fsave(const char* filename
     {
         std::ofstream ofs(filename);
         boost::archive::text_oarchive ar(ofs);
-
         ar << records;
     }
 }
