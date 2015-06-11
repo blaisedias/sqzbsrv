@@ -48,4 +48,20 @@ void save(const char * filename);
 void prune();
 void dump();
 }
+
+namespace std
+{
+    template<>
+    struct hash<sstring::String>
+    {
+        typedef sstring::String argument_type;
+        typedef std::size_t result_type;
+
+        result_type operator()(argument_type const& s) const
+        {
+            return  std::hash<const char *>()(s.c_str());
+        }
+    };
+}
+
 #endif
