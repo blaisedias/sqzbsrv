@@ -1,6 +1,7 @@
 #ifndef AUDIO_TAGS_H_INCLUDED
 #define AUDIO_TAGS_H_INCLUDED
 #include <iostream>
+#include <vector>
 
 namespace audio_tags
 {
