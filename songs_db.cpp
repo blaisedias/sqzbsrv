@@ -1,6 +1,6 @@
-#include <unordered_map>
 #include <iostream>
 #include <memory>
+#include <unordered_map>
 #include <boost/filesystem.hpp>
 
 // for serialisation
@@ -24,6 +24,24 @@ typedef std::unordered_map<sstring::String, sstring::String> INFOMAP;
 static sstring::String fp_tag;
 static sstring::String dir_tag;
 static sstring::String unknown;
+
+static bool initialised=false;
+static std::vector<sstring::String> tags;
+
+void initialise()
+{
+    unknown = "UNKNOWN";
+    fp_tag = audio_tags::FILEPATH;
+    dir_tag = audio_tags::DIRECTORY;
+
+    std::vector <std::string> tag_strings;
+    audio_tags::get_supported_taglist(tag_strings);
+    for(auto ts : tag_strings)
+        tags.push_back(sstring::String(ts));
+//    for_each(tag_strings.begin(), tag_strings.end(),
+//                [](std::string& ts){tags.push_back(sstring::String(ts));});
+    initialised=true;
+}
 
 template<typename T> int Bsearch(T strings, int len, const char *target, int *ixtop)
 {
@@ -62,8 +80,6 @@ template<typename T> int Bsearch(T strings, int len, const char *target, int *ix
     return cmp==0;
 }
 
-//const static sstring::String xx_fp_tag = audio_tags::FILEPATH;
-static bool initialised=false;
 class SongInfo : audio_file_tags::AudioFileRecord {
     private:
         uintmax_t file_length;
@@ -74,7 +90,7 @@ class SongInfo : audio_file_tags::AudioFileRecord {
         void initS();
 
     public:
-        SongInfo(){initS();}
+        inline SongInfo(){initS();}
         SongInfo(const std::string& filename);
         SongInfo(const sstring::String& filename);
         ~SongInfo(){}
@@ -134,16 +150,7 @@ void SongInfo::initS()
 {
     if (initialised)
         return;
-
-//    std::cout << "initS {{{{{{{{  " << std::endl;
-//    fp_tag = sstring::String(audio_tags::FILEPATH);
-//    dir_tag = sstring::String(audio_tags::DIRECTORY);
- //   unknown = sstring::String("UNKNOWN");
-    fp_tag = audio_tags::FILEPATH;
-    dir_tag = audio_tags::DIRECTORY;
-    unknown = "UNKNOWN";
-//    std::cout << "}}}}}}}}" << std::endl;
-    initialised = true;
+    initialise();
 }
 
 void SongInfo::init(const sstring::String& filename)
@@ -238,6 +245,7 @@ bool SongInfo::update_required()
 void SongInfo::dump()
 {
     std::cout << "Complete :" << complete << " Len: " << file_length  << " mtime:"  << file_timestamp <<  std::endl;
+    std::cout << "XXXXXX :" << infomap.size() <<  std::endl;
     for(INFOMAP::iterator itr2=infomap.begin(); itr2 != infomap.end(); ++itr2)
     {
         std::cout << itr2->first << " : " << itr2->second << std::endl;

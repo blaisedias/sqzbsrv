@@ -3,5 +3,6 @@
 
 namespace tracks_db {
     audio_file_tags::AudioFileRecordStore* new_record_store();
+    void initialise();
 }
 #endif

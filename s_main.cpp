@@ -114,6 +114,7 @@ inline bool is_command(const char *str)
 int main( int argc, char* argv[] )
 {
   std::vector<const char *> args;
+  songs_db::initialise();
   audio_file_tags::AudioFileRecordStore* record_store = songs_db::new_record_store();
   if (argc > 1)
   {
