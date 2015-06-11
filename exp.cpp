@@ -26,7 +26,7 @@ if(cc_dump)
     if (true)
     {
 std::cout << "== {{  loading strings" << std::endl;
-        std::ifstream ifs("exp_sstrings.dat");
+        std::ifstream ifs("data/exp_sstrings.dat");
         if (ifs.is_open())
         {
             boost::archive::text_iarchive ar(ifs);
@@ -93,7 +93,7 @@ std::cout << "== III  " << std::endl;
         }
         sstring::save("data/exp_cchars.dat");
         
-        std::ofstream ofs("exp_sstrings.dat");
+        std::ofstream ofs("data/exp_sstrings.dat");
         if (ofs.is_open())
         {
             boost::archive::text_oarchive ar(ofs);
@@ -103,6 +103,7 @@ std::cout << "== III  " << std::endl;
         cout << "Sizeof sstring " << sizeof(strings[0]) << "\n";
     }
 //    strings.clear();
+    cout << "Fini" << "\n";
 }
 
 
