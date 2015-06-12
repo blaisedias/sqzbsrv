@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string.h>
+#include <unordered_map>
 #include <map>
 #include <assert.h>
 #include "sstring.h"
@@ -25,6 +26,28 @@ const char *sp = " ";
 static unsigned acquire_cchars(const char * cc);
 static void read_ccmap_entry(std::ifstream& ifs);
 
+std::size_t oat_hash(const char * cs)
+{
+    std::size_t h = 0;
+    const unsigned char* ucs = (const unsigned char*)cs;
+
+    if (ucs)
+    {
+        while(*ucs)
+        {
+            h += *ucs;
+            h += (h << 10);
+            h ^= (h >> 6);
+            ++ucs;
+        }
+
+        h += (h << 3);
+        h ^= (h >> 11);
+        h += (h << 15);
+    }
+    return h;
+}
+
 //REGISTRY
 struct ccompare : public std::binary_function<const char*, const char *, bool>
 {
@@ -34,11 +57,34 @@ struct ccompare : public std::binary_function<const char*, const char *, bool>
     }
 };
 
+struct cc_equal_to : public std::binary_function<const char*, const char *, bool>
+{
+    bool operator()(const char *lhs, const char *rhs) const
+    {
+        if (lhs == rhs)
+            return true;
+        if ((lhs == 0) || (rhs == 0))
+            return false; 
+        return strcmp(lhs,rhs) == 0;
+    }
+};
+
+struct cc_hash
+{
+    std::size_t operator()(const char *cs) const
+    {
+//        return std::hash<std::string>()(std::string(cs));
+        return oat_hash(cs);        
+    }
+};
+
+
 // string id to cchars instance map
-typedef std::map<unsigned, const cchars*> IDCCMAP;
+typedef std::unordered_map<unsigned, const cchars*> IDCCMAP;
 static IDCCMAP id_cc_map;
 // null terminated char * to id map, char * is pointing to cchar instance chars member
-typedef std::map<const char *, unsigned, ccompare> CCMAP;
+//typedef std::map<const char *, unsigned, ccompare> CCMAP;
+typedef std::unordered_map<const char *, unsigned, cc_hash, cc_equal_to > CCMAP;
 static CCMAP cc_map;
 // current ID value, * MUST * be serialized to maintain ID uniqueness.
 // TODO: handle id overflow.
@@ -369,15 +415,21 @@ void String::refup()
 
 void String::refdn()
 {
-    cchars *pcc = const_cast<cchars *>(id_cc_map[id]);
-//    if (pcc == backstop)
-//        return;
-    if (pcc == 0)
+    IDCCMAP::iterator find = id_cc_map.find(id);
+    if (find != id_cc_map.end())
     {
-        std::cerr << "@refdn for id=" << id << ", pcc == 0" << std::endl;
-        return;
+        cchars *pcc = const_cast<cchars *>(find->second);
+        if (pcc == 0)
+        {
+            std::cerr << "@refdn for id=" << id << ", pcc == 0" << std::endl;
+            return;
+        }
+        --(pcc->ref_count);
     }
-    --(pcc->ref_count);
+    else
+    {
+        std::cerr << "@refdn for absent id=" << id << std::endl;
+    }
 }
 
 void String::bind(unsigned new_id)
@@ -438,6 +490,10 @@ String::~String()
     }
 }
 
+std::size_t String::hash() const
+{
+    return oat_hash(id_cc_map[id]->chars);
+}
 
 String& String::operator=(const String& sstr)
 {

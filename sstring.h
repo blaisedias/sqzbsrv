@@ -41,6 +41,7 @@ class String {
         std::string std_str() const;
         const char* c_str() const;
         friend std::ostream& operator<< (std::ostream& os, const String& sstr);
+        std::size_t hash() const;
 };
 
 void load(const char * filename);
@@ -59,7 +60,8 @@ namespace std
 
         result_type operator()(argument_type const& s) const
         {
-            return  std::hash<const char *>()(s.c_str());
+//            return  std::hash<std::string>()(s.std_str());
+            return  s.hash();
         }
     };
 }
