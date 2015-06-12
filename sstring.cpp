@@ -632,20 +632,37 @@ void save(const char * filename)
     std::ofstream ofs(filename);
     if (ofs.is_open())
     {
-        ofs << cc_id << '\n';
         unsigned long cc_map_size = cc_map.size();
+        std::vector<unsigned> v;
+        for(IDCCMAP::iterator itr=id_cc_map.begin();
+                itr != id_cc_map.end(); ++itr)
+            v.push_back(itr->first);
+        std::sort(v.begin(), v.end());
+
+        ofs << cc_id << '\n';
         ofs << cc_map_size << '\n';
+
+#if 0        
         for(IDCCMAP::iterator itr=id_cc_map.begin();
                 itr != id_cc_map.end(); ++itr)
         {
             if(itr->second)
             {
                 unsigned long slen = strlen(itr->second->chars);
-                ofs << itr->first << " " << slen << " ";
-                ofs << itr->second->chars;
-                ofs << '\n';
+                ofs << itr->first << " " << slen << " " << itr->second->chars << '\n';
             }
         }
+#else
+        for(auto id: v)
+        {
+            const cchars* cc = id_cc_map[id];
+            if (cc)
+            {
+                unsigned long slen = strlen(cc->chars);
+                ofs << id << " " << slen << " " << cc->chars << '\n';
+            }
+        }
+#endif
     }
 }
 #endif
