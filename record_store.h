@@ -90,11 +90,23 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         // debug helper function. FIXME: take an ostream for maximum flexibility.
         void dump_records()
         {
+#if 0
             for(typename std::unordered_map<KeyType, RecordType>::iterator itr=records.begin();
                     itr != records.end(); ++itr)
             {
                 itr->second.dump();
             }
+#endif
+            std::vector<KeyType> v;
+            v.reserve(records.size());
+            for(typename std::unordered_map<KeyType, RecordType>::iterator itr=records.begin();
+                    itr != records.end(); ++itr)
+            {
+                v.push_back(itr->first);
+            }
+            std::sort(v.begin(), v.end());
+            for(auto n: v)
+                records[n].dump();
         }
 
         // debug helper function.
