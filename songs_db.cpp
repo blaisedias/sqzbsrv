@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 #include <unordered_map>
+#include <map>
 #include <boost/filesystem.hpp>
 
 // for serialisation
@@ -45,6 +46,8 @@ void finished()
 //    fixed_strings_list.clear();
 }
 
+// Binary search for string on sorted vectors
+// returns success or failure, + slot where string should be inserted.
 template<typename T> int Bsearch(T strings, int len, const char *target, int *ixtop)
 {
     int start=0;
@@ -77,7 +80,7 @@ template<typename T> int Bsearch(T strings, int len, const char *target, int *ix
     }
 
     if ((cmp > 0) && ((ix_match + 1) < len))
-        ix_match++;        // last comparison => target > probe, so bump up
+        ix_match++;        // at last comparison target > probe, so bump up
     *ixtop = ix_match;
     return cmp==0;
 }
@@ -95,6 +98,7 @@ class SongInfo : audio_file_tags::AudioFileRecord {
         inline SongInfo(){initS();}
         SongInfo(const std::string& filename);
         SongInfo(const sstring::String& filename);
+        SongInfo(const char* const filename);
         ~SongInfo(){}
 
         template <class Archive>
@@ -158,8 +162,8 @@ void SongInfo::initS()
 void SongInfo::init(const sstring::String& filename)
 {
     initS();
-    infomap[audio_tags::FILEPATH] = filename;
-    infomap[audio_tags::DIRECTORY] = sstring::String(boost::filesystem::path(filename.std_str()).parent_path().generic_string());
+    infomap.emplace(audio_tags::FILEPATH,filename);
+    infomap.emplace(audio_tags::DIRECTORY,boost::filesystem::path(filename.std_str()).parent_path().generic_string());
     file_length = boost::filesystem::file_size(filename.std_str());
     file_timestamp = boost::filesystem::last_write_time(filename.std_str());
     complete = false;
@@ -172,18 +176,19 @@ SongInfo::SongInfo(const sstring::String& filename)
 
 SongInfo::SongInfo(const std::string& filename)
 {
-    init(sstring::String(filename));
+    init(filename);
+}
+
+SongInfo::SongInfo(const char* const filename)
+{
+    init(filename);
 }
 
 void SongInfo::update(const std::string tag, const std::string value)
 {
     if(!audio_tags::is_supported(tag))
         return;
-//    std::cout << "Update {{{{{{{{  " << tag << " = " << value << std::endl;
-//    infomap[sstring::String(tag)] = sstring::String(value);
-//    infomap[tag] = value;
     infomap.emplace(tag, value);
-//    std::cout << "}}}}}}}}" << std::endl;
     complete = false;
 }
 
@@ -247,12 +252,29 @@ bool SongInfo::update_required()
 void SongInfo::dump()
 {
     std::cout << "Complete :" << complete << " Len: " << file_length  << " mtime:"  << file_timestamp <<  std::endl;
-    std::cout << "XXXXXX :" << infomap.size() <<  std::endl;
-    for(INFOMAP::iterator itr2=infomap.begin(); itr2 != infomap.end(); ++itr2)
+#if 0
+    typedef std::map<sstring::String, sstring::String> SORTEDINFOMAP;
+    SORTEDINFOMAP smap;
+    for(INFOMAP::iterator itr=infomap.begin(); itr != infomap.end(); ++itr)
     {
-        std::cout << itr2->first << " : " << itr2->second << std::endl;
+        smap.emplace(itr->first, itr->second);
     }
+
+    for(SORTEDINFOMAP::iterator itr=smap.begin(); itr != smap.end(); ++itr)
+    {
+        std::cout << itr->first << " : " << itr->second << std::endl;
+    }
+#else
+    std::vector<sstring::String> v;
+    v.reserve(infomap.size());
+    for(INFOMAP::iterator itr=infomap.begin(); itr != infomap.end(); ++itr)
+        v.push_back(itr->first);
+    std::sort(v.begin(), v.end());
+    for(auto n: v)
+        std::cout << n << " : " << infomap[n] << "\n";
+#endif
     std::cout << std::endl;
+
 }
 
 //audio_file_tags::AudioFileRecordStore* new_record_store(const char *database_location, const char *string_defs_file)
