@@ -23,21 +23,23 @@ typedef std::unordered_map<sstring::String, sstring::String> INFOMAP;
 const char* const unknown="UNKNOWN";
 
 static bool initialised=false;
-//static std::vector<sstring::String> fixed_strings_list;
 
 void initialise()
 {
     //fixed list of strings, fix the IDs but always creating them before we create
     //other strings.
     std::vector<sstring::String> fixed_strings_list;
-    fixed_strings_list.push_back(sstring::String(unknown));
-
     std::vector <std::string> tag_strings;
     audio_tags::get_supported_taglist(tag_strings);
+
+    //HACK: We want to reserve the IDS for UNKNOWN and the supported tags always.
+    //So allocate new instances and never delete.
+    //Why? for easier debug and peruse.
+    fixed_strings_list.push_back(*(new sstring::String(unknown)));
     for(auto ts : tag_strings)
-        fixed_strings_list.push_back(sstring::String(ts));
+        fixed_strings_list.push_back(*(new sstring::String(ts)));
 //    for_each(tag_strings.begin(), tag_strings.end(),
-//                [](std::string& ts){fixed_strings_list.push_back(sstring::String(ts));});
+//                [](std::string& ts){fixed_strings_list.push_back(*(new sstring::String(ts)));});
     initialised=true;
 }
 
