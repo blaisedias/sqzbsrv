@@ -19,28 +19,30 @@ static bool debug=true;
 namespace songs_db {
 typedef std::unordered_map<sstring::String, sstring::String> INFOMAP;
 
-//static sstring::String fp_tag(audio_tags::FILEPATH);
-//static sstring::String dir_tag(audio_tags::DIRECTORY);
-static sstring::String fp_tag;
-static sstring::String dir_tag;
-static sstring::String unknown;
+const char* const unknown="UNKNOWN";
 
 static bool initialised=false;
-static std::vector<sstring::String> tags;
+//static std::vector<sstring::String> fixed_strings_list;
 
 void initialise()
 {
-    unknown = "UNKNOWN";
-    fp_tag = audio_tags::FILEPATH;
-    dir_tag = audio_tags::DIRECTORY;
+    //fixed list of strings, fix the IDs but always creating them before we create
+    //other strings.
+    std::vector<sstring::String> fixed_strings_list;
+    fixed_strings_list.push_back(sstring::String(unknown));
 
     std::vector <std::string> tag_strings;
     audio_tags::get_supported_taglist(tag_strings);
     for(auto ts : tag_strings)
-        tags.push_back(sstring::String(ts));
+        fixed_strings_list.push_back(sstring::String(ts));
 //    for_each(tag_strings.begin(), tag_strings.end(),
-//                [](std::string& ts){tags.push_back(sstring::String(ts));});
+//                [](std::string& ts){fixed_strings_list.push_back(sstring::String(ts));});
     initialised=true;
+}
+
+void finished()
+{
+//    fixed_strings_list.clear();
 }
 
 template<typename T> int Bsearch(T strings, int len, const char *target, int *ixtop)
@@ -156,8 +158,8 @@ void SongInfo::initS()
 void SongInfo::init(const sstring::String& filename)
 {
     initS();
-    infomap[fp_tag] = filename;
-    infomap[dir_tag] = sstring::String(boost::filesystem::path(filename.std_str()).parent_path().generic_string());
+    infomap[audio_tags::FILEPATH] = filename;
+    infomap[audio_tags::DIRECTORY] = sstring::String(boost::filesystem::path(filename.std_str()).parent_path().generic_string());
     file_length = boost::filesystem::file_size(filename.std_str());
     file_timestamp = boost::filesystem::last_write_time(filename.std_str());
     complete = false;
@@ -222,7 +224,7 @@ void SongInfo::update_start()
     for(INFOMAP::iterator itr=infomap.begin();
             itr != infomap.end(); ++itr)
     {
-        if ((itr->first == fp_tag) || (itr->first == dir_tag))
+        if ((itr->first == audio_tags::FILEPATH) || (itr->first == audio_tags::DIRECTORY))
             continue;
         infomap.erase(itr->first);
     }
@@ -230,16 +232,16 @@ void SongInfo::update_start()
 
 void SongInfo::update_complete()
 {
-    file_length = boost::filesystem::file_size(infomap[fp_tag].std_str());
-    file_timestamp = boost::filesystem::last_write_time(infomap[fp_tag].std_str());
+    file_length = boost::filesystem::file_size(infomap[audio_tags::FILEPATH].std_str());
+    file_timestamp = boost::filesystem::last_write_time(infomap[audio_tags::FILEPATH].std_str());
     complete = true;
 }
 
 bool SongInfo::update_required()
 {
     return (complete != true)
-        || file_timestamp != boost::filesystem::last_write_time(infomap[fp_tag].std_str())
-        || file_length != boost::filesystem::file_size(infomap[fp_tag].std_str());
+        || file_timestamp != boost::filesystem::last_write_time(infomap[audio_tags::FILEPATH].std_str())
+        || file_length != boost::filesystem::file_size(infomap[audio_tags::FILEPATH].std_str());
 }
 
 void SongInfo::dump()

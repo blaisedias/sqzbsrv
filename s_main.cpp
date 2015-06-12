@@ -143,6 +143,8 @@ int main( int argc, char* argv[] )
   std::cout << "Finished commands. " << std::endl;
   std::cout << "delete_record_store. " << std::endl;
   delete record_store;
+//  songs_db::finished();
+  std::cout << "Done. " << std::endl;
 }
 
 
