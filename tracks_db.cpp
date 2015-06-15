@@ -20,10 +20,6 @@
 
 namespace tracks_db {
 
-void initialise()
-{
-}
-
 static void save_vec(const char *filename, std::vector<std::string> svec)
 {
     std::sort(svec.begin(), svec.end());

@@ -114,7 +114,6 @@ inline bool is_command(const char *str)
 int main( int argc, char* argv[] )
 {
   std::vector<const char *> args;
-  songs_db::initialise();
   audio_file_tags::AudioFileRecordStore* record_store = songs_db::new_record_store();
   if (argc > 1)
   {
@@ -143,7 +142,6 @@ int main( int argc, char* argv[] )
   std::cout << "Finished commands. " << std::endl;
   std::cout << "delete_record_store. " << std::endl;
   delete record_store;
-//  songs_db::finished();
   std::cout << "Done. " << std::endl;
 }
 

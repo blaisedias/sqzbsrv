@@ -18,35 +18,9 @@
 static bool debug=true;
 
 namespace songs_db {
-typedef std::unordered_map<sstring::String, sstring::String> INFOMAP;
+typedef std::unordered_multimap<sstring::String, sstring::String> INFOMAP;
 
 const char* const unknown="UNKNOWN";
-
-static bool initialised=false;
-
-void initialise()
-{
-    //fixed list of strings, fix the IDs but always creating them before we create
-    //other strings.
-    std::vector<sstring::String> fixed_strings_list;
-    std::vector <std::string> tag_strings;
-    audio_tags::get_supported_taglist(tag_strings);
-
-    //HACK: We want to reserve the IDS for UNKNOWN and the supported tags always.
-    //So allocate new instances and never delete.
-    //Why? for easier debug and peruse.
-    fixed_strings_list.push_back(*(new sstring::String(unknown)));
-    for(auto ts : tag_strings)
-        fixed_strings_list.push_back(*(new sstring::String(ts)));
-//    for_each(tag_strings.begin(), tag_strings.end(),
-//                [](std::string& ts){fixed_strings_list.push_back(*(new sstring::String(ts)));});
-    initialised=true;
-}
-
-void finished()
-{
-//    fixed_strings_list.clear();
-}
 
 // Binary search for string on sorted vectors
 // returns success or failure, + slot where string should be inserted.
@@ -94,10 +68,9 @@ class SongInfo : audio_file_tags::AudioFileRecord {
         bool complete;
         INFOMAP infomap;
         void init(const sstring::String& filename);
-        void initS();
 
     public:
-        inline SongInfo(){initS();}
+        SongInfo(){}
         SongInfo(const std::string& filename);
         SongInfo(const sstring::String& filename);
         SongInfo(const char* const filename);
@@ -154,16 +127,8 @@ class SongInfo : audio_file_tags::AudioFileRecord {
         }
 };
 
-void SongInfo::initS()
-{
-    if (initialised)
-        return;
-    initialise();
-}
-
 void SongInfo::init(const sstring::String& filename)
 {
-    initS();
     infomap.emplace(audio_tags::FILEPATH,filename);
     infomap.emplace(audio_tags::DIRECTORY,boost::filesystem::path(filename.std_str()).parent_path().generic_string());
     file_length = boost::filesystem::file_size(filename.std_str());
@@ -239,16 +204,23 @@ void SongInfo::update_start()
 
 void SongInfo::update_complete()
 {
-    file_length = boost::filesystem::file_size(infomap[audio_tags::FILEPATH].std_str());
-    file_timestamp = boost::filesystem::last_write_time(infomap[audio_tags::FILEPATH].std_str());
+    auto find = infomap.find(audio_tags::FILEPATH);
+    std::string filepath = find->second.std_str();
+    file_length = boost::filesystem::file_size(filepath);
+    file_timestamp = boost::filesystem::last_write_time(filepath);
     complete = true;
 }
 
 bool SongInfo::update_required()
 {
-    return (complete != true)
-        || file_timestamp != boost::filesystem::last_write_time(infomap[audio_tags::FILEPATH].std_str())
-        || file_length != boost::filesystem::file_size(infomap[audio_tags::FILEPATH].std_str());
+    if (complete)
+    {
+        auto find = infomap.find(audio_tags::FILEPATH);
+        std::string filepath = find->second.std_str();
+        return file_timestamp != boost::filesystem::last_write_time(filepath)
+            || file_length != boost::filesystem::file_size(filepath);
+    }
+    return true;
 }
 
 void SongInfo::dump()
@@ -272,17 +244,41 @@ void SongInfo::dump()
     for(INFOMAP::iterator itr=infomap.begin(); itr != infomap.end(); ++itr)
         v.push_back(itr->first);
     std::sort(v.begin(), v.end());
+    v.erase(std::unique(v.begin(), v.end()), v.end());
     for(auto n: v)
-        std::cout << n << " : " << infomap[n] << "\n";
+    {
+        auto range = infomap.equal_range(n);
+        for (auto it = range.first; it != range.second; ++it)
+        {
+            std::cout << n << " : " << it->second << "\n";
+        }
+    }
 #endif
     std::cout << std::endl;
 
 }
 
+template <typename KeyType, typename RecordType>
+class songsRecordStore: public record_store::RecordStore<KeyType, RecordType>
+{
+    private:
+        std::vector<KeyType> fixed_strings_list;
+    public:
+        songsRecordStore(const char *location): record_store::RecordStore<KeyType, RecordType>(location)
+        {
+            std::vector <std::string> tag_strings;
+            audio_tags::get_supported_taglist(tag_strings);
+            fixed_strings_list.push_back(unknown);
+            for(auto ts : tag_strings)
+                fixed_strings_list.push_back(ts);
+        }
+};
+
 //audio_file_tags::AudioFileRecordStore* new_record_store(const char *database_location, const char *string_defs_file)
 audio_file_tags::AudioFileRecordStore* new_record_store()
 {
-    return new record_store::RecordStore<sstring::String, SongInfo>("data/songs_db.dat");
+//    return new record_store::RecordStore<sstring::String, SongInfo>("data/songs_db.dat");
+    return new songsRecordStore<sstring::String, SongInfo>("data/songs_db.dat");
 }
 
 } //namespace songs_db
