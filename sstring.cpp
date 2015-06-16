@@ -216,7 +216,16 @@ class cchars
         }
 
         friend std::ostream& operator<< (std::ostream& os, const String& sstr);
+        friend std::ostream& operator<< (std::ostream&, const cchars&);
 
+        inline std::size_t hashvalue()
+        {
+            if (hashv == 0)
+                hashv = std::hash<std::string>()(std::string(chars));
+            return hashv;
+        }
+
+#if 0
         // boost serialization support.
         template <class Archive>
         void save(Archive &ar,  const unsigned int version) const
@@ -252,15 +261,8 @@ class cchars
             id_cc_map[id] = this;
         }
         BOOST_SERIALIZATION_SPLIT_MEMBER();
+#endif
 
-        friend std::ostream& operator<< (std::ostream&, const cchars&);
-
-        inline std::size_t hashvalue()
-        {
-            if (hashv == 0)
-                hashv = std::hash<std::string>()(std::string(chars));
-            return hashv;
-        }
 };
 
 std::ostream& operator<< (std::ostream& os,const cchars& cs)
@@ -584,9 +586,11 @@ static void read_ccmap_entry(std::ifstream& ifs)
 {
     char tmp;
     unsigned id;
+    std::size_t hashv;
     unsigned slen;
 
     ifs >> id;
+    ifs >> hashv;
     ifs >> slen;
 
     char chars[slen+1];
@@ -595,6 +599,7 @@ static void read_ccmap_entry(std::ifstream& ifs)
         ifs.read(chars, slen+1);
     chars[slen] = 0;
     cchars *pcc = new cchars(chars, id);
+    pcc->hashv = hashv;
     id_cc_map[id] = pcc;
     cc_map[pcc->chars] = id;
 //    cout << id << "      '" << chars << "' " << pcc << std::endl;
@@ -669,7 +674,7 @@ void save(const char * filename)
             if (cc)
             {
                 unsigned long slen = strlen(cc->chars);
-                ofs << id << " " << slen << " " << cc->chars << '\n';
+                ofs << id << " " << cc->hashv << " " << slen << " " << cc->chars << '\n';
             }
         }
 #endif
