@@ -73,8 +73,8 @@ struct cc_hash
 {
     std::size_t operator()(const char *cs) const
     {
-//        return std::hash<std::string>()(std::string(cs));
-        return oat_hash(cs);        
+        return std::hash<std::string>()(std::string(cs));
+//        return oat_hash(cs);        
     }
 };
 
@@ -114,6 +114,7 @@ class cchars
         int ref_count;
         unsigned id;
         char * chars;
+        std::size_t hashv=0;
 
         // Prevent trivial assigment, ids and refcount need to be migrate
         cchars& operator=(const cchars&);
@@ -220,9 +221,10 @@ class cchars
         template <class Archive>
         void save(Archive &ar,  const unsigned int version) const
         {
+            std::string tmp(chars);
             // Store the unique id and the c string associated with that id
             ar & id;
-            std::string tmp(chars);
+            ar & hashv;
             ar & tmp;
             if (debug_cchars)
             {
@@ -238,6 +240,7 @@ class cchars
             ref_count = 0;
 
             ar & id;
+            ar & hashv;
             ar & tmp;
 
             chars = new_cstr(tmp.c_str(), chars);
@@ -251,6 +254,13 @@ class cchars
         BOOST_SERIALIZATION_SPLIT_MEMBER();
 
         friend std::ostream& operator<< (std::ostream&, const cchars&);
+
+        inline std::size_t hashvalue()
+        {
+            if (hashv == 0)
+                hashv = std::hash<std::string>()(std::string(chars));
+            return hashv;
+        }
 };
 
 std::ostream& operator<< (std::ostream& os,const cchars& cs)
@@ -336,7 +346,6 @@ class StaticInitializer {
                 iar & dummy;
 
                 id_cc_map[0] = new cchars("!!!default chars!!!");
-                //backstop = (void *)id_cc_map[0];
                 //FIXME:!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 //cc_map[id_cc_map[0]] = 0;
             }
@@ -492,7 +501,8 @@ String::~String()
 
 std::size_t String::hash() const
 {
-    return oat_hash(id_cc_map[id]->chars);
+//    return oat_hash(id_cc_map[id]->chars);
+    return const_cast<cchars *>(id_cc_map[id])->hashvalue();
 }
 
 String& String::operator=(const String& sstr)
