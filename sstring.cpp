@@ -188,8 +188,6 @@ class cchars
             }
             if(id)
             {
-//                id_cc_map[id] = (cchars *)backstop;
-//                id_cc_map[id] = 0;
                 id_cc_map.erase(id);
             }
             delete [] chars;
