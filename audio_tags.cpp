@@ -5,13 +5,15 @@
 #include "audio_tags.h"
 namespace audio_tags
 {
+    const char * FILEPATH = "FILEPATH";
+    const char * DIRECTORY = "DIRECTORY";
+    const char * FILELENGTH = "FILELENGTH";
+    const char * FILETIMESTAMP = "FILETIMESTAMP";
+
     const char * BITRATE = "BITRATE";
     const char * LENGTH = "LENGTH";
     const char * SAMPLERATE = "SAMPLERATE";
     const char * CHANNELS = "CHANNELS";
-
-    const char * FILEPATH = "FILEPATH";
-    const char * DIRECTORY = "DIRECTORY";
     const char * ALBUM = "ALBUM";
     const char * ARTIST = "ARTIST";
     const char * TITLE = "TITLE";
@@ -40,11 +42,12 @@ class StaticInitializer {
     public:
         StaticInitializer ()
         {
-            const unsigned NM_TAGS = 16;
-            const char * const ctags[NM_TAGS] = 
+            const char * const ctags[] = 
             {
                 audio_tags::FILEPATH,
                 audio_tags::DIRECTORY,
+                audio_tags::FILELENGTH,
+                audio_tags::FILETIMESTAMP,
                 audio_tags::BITRATE,
                 audio_tags::LENGTH,
                 audio_tags::SAMPLERATE,
@@ -61,7 +64,7 @@ class StaticInitializer {
                 audio_tags::COMPOSER,
                 audio_tags::CONDUCTOR,
             };
-            for (unsigned ix =0; ix < NM_TAGS; ix ++)
+            for (unsigned ix =0; ix < (sizeof(ctags)/sizeof(*ctags)); ix ++)
             {
                 supported_tags.push_back(std::string(ctags[ix]));
                 supported_tags_map[supported_tags[ix]] = ix;

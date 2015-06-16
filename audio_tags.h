@@ -5,13 +5,15 @@
 
 namespace audio_tags
 {
+    extern const char * FILEPATH;
+    extern const char * DIRECTORY;
+    extern const char * FILELENGTH;
+    extern const char * FILETIMESTAMP;
+
     extern const char * BITRATE;
     extern const char * LENGTH;
     extern const char * SAMPLERATE;
     extern const char * CHANNELS;
-
-    extern const char * FILEPATH;
-    extern const char * DIRECTORY;
     extern const char * ALBUM;
     extern const char * ARTIST;
     extern const char * TITLE;
