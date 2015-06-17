@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string.h>
 #include <unordered_map>
-#include <map>
+#include <stack>
 #include <assert.h>
 #include "sstring.h"
 
@@ -9,7 +9,6 @@
 #include <sstream>
 #include <fstream>
 #include <boost/serialization/vector.hpp>
-#include <boost/serialization/map.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 
@@ -293,6 +292,7 @@ static unsigned acquire_cchars(const char * chars)
 
 void prune()
 {
+    std::stack<unsigned> deleted_ids;
     for(IDCCMAP::iterator itr=id_cc_map.begin();
             itr != id_cc_map.end(); ++itr)
     {
@@ -301,10 +301,22 @@ void prune()
         {
             if (debug_cchars)
                 std::cerr << "Erasing  " << pcchars->id << " "<< *pcchars << nl;
-            cc_map.erase(itr->second->chars);
+//            cc_map.erase(itr->second->chars);
             //FIXME: can we do id_cc_map.erase(itr->first) safely here?
-            id_cc_map[itr->first] = NULL;
+//            id_cc_map[itr->first] = NULL;
+            deleted_ids.push(pcchars->id);
         }
+    }
+
+    while(!deleted_ids.empty())
+    {
+        // id==0 is special.
+        if (deleted_ids.top())
+        {
+            cc_map.erase(id_cc_map[deleted_ids.top()]->chars);
+            delete id_cc_map[deleted_ids.top()];
+        }
+        deleted_ids.pop();
     }
 }
 
@@ -345,8 +357,9 @@ class StaticInitializer {
                 boost::archive::text_iarchive iar(ss);
                 iar & dummy;
 
+                // special entry @id==0, to spot bugs
+                // has no corresponding entry in cc_map.
                 id_cc_map[0] = new cchars("!!!default chars!!!");
-                //FIXME:!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 //cc_map[id_cc_map[0]] = 0;
             }
         }
@@ -437,7 +450,7 @@ void String::refdn()
     }
     else
     {
-        std::cerr << "@refdn for absent id=" << id << std::endl;
+//        std::cerr << "@refdn for absent id=" << id << std::endl;
     }
 }
 
@@ -645,7 +658,10 @@ void save(const char * filename)
     std::ofstream ofs(filename);
     if (ofs.is_open())
     {
-        unsigned long cc_map_size = cc_map.size();
+        // unsigned long cc_map_size = cc_map.size();
+
+        // id 0 is special and must not be serialised.
+        unsigned long cc_map_size = id_cc_map.size() - 1;
         std::vector<unsigned> v;
         for(IDCCMAP::iterator itr=id_cc_map.begin();
                 itr != id_cc_map.end(); ++itr)
@@ -668,9 +684,10 @@ void save(const char * filename)
 #else
         for(auto id: v)
         {
-            const cchars* cc = id_cc_map[id];
-            if (cc)
+            // id==0 is special and must not be serialized.
+            if (id)
             {
+                const cchars* cc = id_cc_map[id];
                 unsigned long slen = strlen(cc->chars);
                 ofs << id << " " << cc->hashv << " " << slen << " " << cc->chars << '\n';
             }
