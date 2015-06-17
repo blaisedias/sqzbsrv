@@ -60,9 +60,10 @@ std::cout << "== II  " << std::endl;
         std::cout << *zambia2 << std::endl;
         delete zambia2;
         
-        sstring::save("data/exp_cchars.dat");
 if(cc_dump)
     sstring::dump();
+
+        sstring::save("data/exp_cchars.dat");
     }
 
     std::cout << "---------------" << std::endl;
