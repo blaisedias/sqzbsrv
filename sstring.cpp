@@ -18,12 +18,11 @@ const bool debug_cchars=false;
 const bool debug=false;
 std::ostream& cout = std::cout;
 #define nl std::endl
-const char *sp = " ";
+const char sep = ';';
 
 //static void *backstop=0;
 
 static unsigned acquire_cchars(const char * cc);
-static void read_ccmap_entry(std::ifstream& ifs);
 
 std::size_t oat_hash(const char * cs)
 {
@@ -78,6 +77,7 @@ struct cc_hash
 };
 
 
+class cchars;
 // string id to cchars instance map
 typedef std::unordered_map<unsigned, const cchars*> IDCCMAP;
 static IDCCMAP id_cc_map;
@@ -90,10 +90,20 @@ static CCMAP cc_map;
 static unsigned cc_id = 100;
 
 
-static char* new_cstr(const char * chars_in="", char* prev_chars=NULL)
+static char* new_cstr(const char * chars_in=NULL, char* prev_chars=NULL)
 {
-    char * chars = new char[strlen(chars_in) + 1];
-    strcpy(chars, chars_in);
+    char* chars;
+    if (chars_in)
+    {
+        chars = new char[strlen(chars_in) + 1];
+        strcpy(chars, chars_in);
+    }
+    else
+    {
+        chars = new char[1];
+        chars[0] = 0;
+    }
+
     if(prev_chars)
         delete prev_chars;
     return chars;
@@ -107,8 +117,7 @@ class cchars
         friend unsigned acquire_cchars(const char * chars);
         friend void prune();
         friend void dump();
-        friend void read_ccmap_entry(std::ifstream& ifs);
-        friend void save(const char * filename);
+        friend void load(const char * filename);
 
         int ref_count;
         unsigned id;
@@ -117,7 +126,8 @@ class cchars
 
         // Prevent trivial assigment, ids and refcount need to be migrate
         cchars& operator=(const cchars&);
-        cchars(const char * const chars_in):ref_count(0),id(0),chars(new_cstr(chars_in))
+    public:
+        cchars(const char * const chars_in=NULL):ref_count(0),id(0),chars(new_cstr(chars_in))
         {
             if (debug_cchars)
             {
@@ -126,7 +136,7 @@ class cchars
             }
         }
 
-        cchars(const char * const chars_in, unsigned new_id):ref_count(0),id(new_id),chars(new_cstr(chars_in))
+        cchars(unsigned new_id, const char * const chars_in, std::size_t hashval=0):ref_count(0),id(new_id),chars(new_cstr(chars_in)),hashv(hashval)
         {
             if (debug_cchars)
             {
@@ -135,8 +145,7 @@ class cchars
             }
         }
 
-    // bleh! { for now constructors need to be public for boost serialization of containers of 
-    public:
+#if 0
         // CTOR required for STL containers
         cchars():ref_count(0),id(0),chars(new_cstr())
         {
@@ -145,7 +154,6 @@ class cchars
         }
 
         // copy constructor CTOR required for STL containers
-        // Note move semantics on chars * will not work because of the way search_cc.chars has been setup.
         cchars(const cchars& cs):ref_count(0),id(0),chars(new_cstr())
         {
             if (debug_cchars)
@@ -156,27 +164,27 @@ class cchars
                 cout << " rc " << cs.ref_count << nl;
                 throw std::logic_error("sstring::cchars copy constructor: copy from cchars object which has non 0 reference count");
             }
-            if (cs.id)
-            {
-                if (id_cc_map.count(cs.id))
-                {
-                    if (id_cc_map[cs.id] != &cs)
-                        throw std::logic_error("sstring::cchars copy constructor: registry corrupted, id record does not match source cchars object");
-                }
-                id_cc_map[cs.id] = this;
-            }
-            ref_count = cs.ref_count;
+            ref_count = 0;
             id = cs.id;
-            // take ownership of the id.
-            const_cast<cchars &>(cs).id = 0;
             chars = new_cstr(cs.chars, chars);
+//            if (cs.id)
+//            {
+//                if (id_cc_map.count(cs.id))
+//                {
+//                    if (id_cc_map[cs.id] != &cs)
+//                        throw std::logic_error("sstring::cchars copy constructor: registry corrupted, id record does not match source cchars object");
+//                }
+//                id_cc_map[cs.id] = this;
+//                // take ownership of the id.
+//                const_cast<cchars &>(cs).id = 0;
+            }
             if (debug_cchars)
             {
                 cout << this << "           " << id << ", " << ref_count << " chars*=" << (void *)chars << nl;
                 cout << this << "           " << chars << nl;
             }
         }
-
+#endif
         // DTOR
         ~cchars()
         {
@@ -184,10 +192,6 @@ class cchars
             {
                 cout << this << " ~cchars() ref_count=" << ref_count << " id=" << id << " chars*=" << (void *)chars << nl;
                 cout << this << "           " << chars << nl;
-            }
-            if(id)
-            {
-                id_cc_map.erase(id);
             }
             delete [] chars;
         }
@@ -232,10 +236,6 @@ class cchars
             ar & id;
             ar & hashv;
             ar & tmp;
-            if (debug_cchars)
-            {
-                std::cerr << "############################# " << std::setw(9) << std::setfill('0') << id << std::setw(0) << " " << tmp << std::endl;
-            }
         }
 
         template <class Archive>
@@ -259,10 +259,29 @@ class cchars
         }
         BOOST_SERIALIZATION_SPLIT_MEMBER();
 #endif
+        void save(std::ofstream& ofs) const
+        {
+            unsigned slen = strlen(chars);
+            ofs << id << " " << hashv << " " << slen << sep << chars << '\n';
+        }
+
+        void load(std::ifstream& ifs)
+        {
+            char mysep;
+            unsigned slen;
+            ifs >> id;
+            ifs >> hashv;
+            ifs >> slen;
+            ifs.get(mysep);
+            chars = new char[slen + 1];
+            if (slen)
+                ifs.read(chars, slen + 1);
+            chars[slen] = 0;
+        }
 
 };
 
-std::ostream& operator<< (std::ostream& os,const cchars& cs)
+std::ostream& operator<< (std::ostream& os, const cchars& cs)
 {
     os << cs.chars;
     return os;
@@ -274,7 +293,7 @@ static unsigned acquire_cchars(const char * chars)
     if (find == cc_map.end())
     {
         unsigned new_id = cc_id++;
-        cchars * new_pcc= new cchars(chars, new_id);
+        cchars * new_pcc= new cchars(new_id, chars);
         cc_map[new_pcc->chars] = new_id;
         id_cc_map[new_id] = new_pcc;
         if (debug)
@@ -315,6 +334,7 @@ void prune()
         {
             cc_map.erase(id_cc_map[deleted_ids.top()]->chars);
             delete id_cc_map[deleted_ids.top()];
+            id_cc_map.erase(deleted_ids.top());
         }
         deleted_ids.pop();
     }
@@ -593,29 +613,6 @@ template <class Archive>
 }
 
 // Module functions
-static void read_ccmap_entry(std::ifstream& ifs)
-{
-    char tmp;
-    unsigned id;
-    std::size_t hashv;
-    unsigned slen;
-
-    ifs >> id;
-    ifs >> hashv;
-    ifs >> slen;
-
-    char chars[slen+1];
-    ifs.get(tmp);
-    if (slen)
-        ifs.read(chars, slen+1);
-    chars[slen] = 0;
-    cchars *pcc = new cchars(chars, id);
-    pcc->hashv = hashv;
-    id_cc_map[id] = pcc;
-    cc_map[pcc->chars] = id;
-//    cout << id << "      '" << chars << "' " << pcc << std::endl;
-}
-
 void load(const char * filename)
 {
     std::ifstream ifs(filename);
@@ -626,40 +623,19 @@ void load(const char * filename)
         ifs >> cc_map_size;
         while(cc_map_size--)
         {
-            read_ccmap_entry(ifs);
+            cchars *pcc = new cchars();
+            pcc->load(ifs);
+            id_cc_map[pcc->id] = pcc;
+            cc_map[pcc->chars] = pcc->id;
         }
     }
 }
 
-#if 0
 void save(const char * filename)
 {
     std::ofstream ofs(filename);
     if (ofs.is_open())
     {
-        ofs << cc_id << '\n';
-        unsigned long cc_map_size = cc_map.size();
-        ofs << cc_map_size << '\n';
-        for(CCMAP::iterator itr=cc_map.begin();
-                itr != cc_map.end(); ++itr)
-        {
-            {
-                unsigned long slen = strlen(itr->first);
-                ofs << itr->second << " " << slen << " ";
-                ofs << itr->first;
-                ofs << '\n';
-            }
-        }
-    }
-}
-#else
-void save(const char * filename)
-{
-    std::ofstream ofs(filename);
-    if (ofs.is_open())
-    {
-        // unsigned long cc_map_size = cc_map.size();
-
         // id 0 is special and must not be serialised.
         unsigned long cc_map_size = id_cc_map.size() - 1;
         std::vector<unsigned> v;
@@ -687,12 +663,9 @@ void save(const char * filename)
             // id==0 is special and must not be serialized.
             if (id)
             {
-                const cchars* cc = id_cc_map[id];
-                unsigned long slen = strlen(cc->chars);
-                ofs << id << " " << cc->hashv << " " << slen << " " << cc->chars << '\n';
+                id_cc_map[id]->save(ofs);
             }
         }
-#endif
     }
 }
 #endif

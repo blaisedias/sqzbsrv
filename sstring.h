@@ -6,14 +6,12 @@
 
 namespace sstring {
 
-class cchars;
 
 class String {
     private:
         unsigned id;
-        void bind(unsigned id);
-        friend class cchars;
 
+        void bind(unsigned id);
         friend class boost::serialization::access;
         template <class Archive>
             void load(Archive &ar, const unsigned int version);
