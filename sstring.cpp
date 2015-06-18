@@ -112,7 +112,6 @@ static char* new_cstr(const char * chars_in=NULL, char* prev_chars=NULL)
 class cchars
 {
     private:
-//        friend class StaticInitializer;
         friend class String;
         friend unsigned acquire_cchars(const char * chars);
         friend void prune();
@@ -329,8 +328,6 @@ void prune()
 
     while(!deleted_ids.empty())
     {
-//        // id==0 is special.
-//        if (deleted_ids.top())
         {
             cc_map.erase(id_cc_map[deleted_ids.top()]->chars);
             delete id_cc_map[deleted_ids.top()];
@@ -376,11 +373,6 @@ class StaticInitializer {
 
                 boost::archive::text_iarchive iar(ss);
                 iar & dummy;
-
-//                // special entry @id==0, to spot bugs
-//                // has no corresponding entry in cc_map.
-//                id_cc_map[0] = new cchars("!!!default chars!!!");
-//                //cc_map[id_cc_map[0]] = 0;
             }
         }
 };
@@ -636,8 +628,6 @@ void save(const char * filename)
     std::ofstream ofs(filename);
     if (ofs.is_open())
     {
-//        // id 0 is special and must not be serialised.
-//        unsigned long cc_map_size = id_cc_map.size() - 1;
         unsigned long cc_map_size = id_cc_map.size();
         std::vector<unsigned> v;
         for(IDCCMAP::iterator itr=id_cc_map.begin();
@@ -661,8 +651,6 @@ void save(const char * filename)
 #else
         for(auto id: v)
         {
-//            // id==0 is special and must not be serialized.
-//            if (id)
             {
                 id_cc_map[id]->save(ofs);
             }
