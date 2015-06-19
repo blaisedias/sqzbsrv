@@ -6,7 +6,6 @@
 
 namespace sstring {
 
-
 class String {
     private:
         unsigned id;
@@ -42,11 +41,18 @@ class String {
         std::size_t hash() const;
 };
 
-void load(const char * filename);
-void save(const char * filename);
-void prune();
-void dump();
-}
+class Registry {
+    public:
+        virtual void load(const char * filename)=0;
+        virtual void save(const char * filename)=0;
+        virtual void prune()=0;
+        virtual void dump()=0;
+        virtual ~Registry() {};
+};
+
+Registry& getRegistry();
+
+} // sstring
 
 namespace std
 {

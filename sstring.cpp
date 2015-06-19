@@ -20,10 +20,6 @@ std::ostream& cout = std::cout;
 #define nl std::endl
 const char sep = ';';
 
-//static void *backstop=0;
-
-static unsigned acquire_cchars(const char * cc);
-
 std::size_t oat_hash(const char * cs)
 {
     std::size_t h = 0;
@@ -78,17 +74,6 @@ struct cc_hash
 
 
 class cchars;
-// string id to cchars instance map
-typedef std::unordered_map<unsigned, const cchars*> IDCCMAP;
-static IDCCMAP id_cc_map;
-// null terminated char * to id map, char * is pointing to cchar instance chars member
-//typedef std::map<const char *, unsigned, ccompare> CCMAP;
-typedef std::unordered_map<const char *, unsigned, cc_hash, cc_equal_to > CCMAP;
-static CCMAP cc_map;
-// current ID value, * MUST * be serialized to maintain ID uniqueness.
-// TODO: handle id overflow.
-static unsigned cc_id = 100;
-
 
 static char* new_cstr(const char * chars_in=NULL, char* prev_chars=NULL)
 {
@@ -112,21 +97,17 @@ static char* new_cstr(const char * chars_in=NULL, char* prev_chars=NULL)
 class cchars
 {
     private:
-        friend class String;
-        friend unsigned acquire_cchars(const char * chars);
-        friend void prune();
-        friend void dump();
-        friend void load(const char * filename);
-
-        int ref_count;
-        unsigned id;
+        unsigned id=0;
         char * chars;
         std::size_t hashv=0;
+        int ref_count=0;
 
-        // Prevent trivial assigment, ids and refcount need to be migrate
+        friend class String;
+
+        // Prevent trivial assignment.
         cchars& operator=(const cchars&);
     public:
-        cchars(const char * const chars_in=NULL):ref_count(0),id(0),chars(new_cstr(chars_in))
+        cchars(const char * const chars_in=NULL):chars(new_cstr(chars_in))
         {
             if (debug_cchars)
             {
@@ -135,7 +116,7 @@ class cchars
             }
         }
 
-        cchars(unsigned new_id, const char * const chars_in, std::size_t hashval=0):ref_count(0),id(new_id),chars(new_cstr(chars_in)),hashv(hashval)
+        cchars(unsigned new_id, const char * const chars_in, std::size_t hashval=0):id(new_id),chars(new_cstr(chars_in)),hashv(hashval)
         {
             if (debug_cchars)
             {
@@ -146,7 +127,7 @@ class cchars
 
 #if 0
         // CTOR required for STL containers
-        cchars():ref_count(0),id(0),chars(new_cstr())
+        cchars():chars(new_cstr())
         {
             if (debug_cchars)
                 cout << this << " cchars()" << nl;
@@ -166,17 +147,6 @@ class cchars
             ref_count = 0;
             id = cs.id;
             chars = new_cstr(cs.chars, chars);
-//            if (cs.id)
-//            {
-//                if (id_cc_map.count(cs.id))
-//                {
-//                    if (id_cc_map[cs.id] != &cs)
-//                        throw std::logic_error("sstring::cchars copy constructor: registry corrupted, id record does not match source cchars object");
-//                }
-//                id_cc_map[cs.id] = this;
-//                // take ownership of the id.
-//                const_cast<cchars &>(cs).id = 0;
-            }
             if (debug_cchars)
             {
                 cout << this << "           " << id << ", " << ref_count << " chars*=" << (void *)chars << nl;
@@ -225,6 +195,20 @@ class cchars
             return hashv;
         }
 
+        inline const char* const c_str() const
+        {
+            return chars;
+        }
+
+        inline unsigned v_ref_count() const
+        {
+            return ref_count;
+        }
+
+        inline unsigned v_id() const
+        {
+            return id;
+        }
 #if 0
         // boost serialization support.
         template <class Archive>
@@ -249,12 +233,6 @@ class cchars
             ar & tmp;
 
             chars = new_cstr(tmp.c_str(), chars);
-
-            // Loading into an existing id slot is undefined, abort.
-            if (id_cc_map.count(id))
-                throw std::logic_error("sstring::cchars.load id is already in use");
-            // For now link this instance to the id.
-            id_cc_map[id] = this;
         }
         BOOST_SERIALIZATION_SPLIT_MEMBER();
 #endif
@@ -277,7 +255,6 @@ class cchars
                 ifs.read(chars, slen + 1);
             chars[slen] = 0;
         }
-
 };
 
 std::ostream& operator<< (std::ostream& os, const cchars& cs)
@@ -286,78 +263,157 @@ std::ostream& operator<< (std::ostream& os, const cchars& cs)
     return os;
 }
 
-static unsigned acquire_cchars(const char * chars)
-{
-    CCMAP::iterator find = cc_map.find(chars);
-    if (find == cc_map.end())
-    {
-        unsigned new_id = cc_id++;
-        cchars * new_pcc= new cchars(new_id, chars);
-        cc_map[new_pcc->chars] = new_id;
-        id_cc_map[new_id] = new_pcc;
-        if (debug)
-            std::cout << "NEW   id=" << new_id << " " << cc_map.find(chars)->first << nl;
-        return new_id;
-    }
-    else
-    {
-        if (debug)
-            std::cout << "FOUND id=" << find->second << " " << find->first << nl;
-    }
-    return find->second;
-}
+// string id to cchars instance map
+typedef std::unordered_map<unsigned, const cchars*> IDCCMAP;
+// null terminated char * to id map, char * is pointing to cchar instance chars member
+//typedef std::map<const char *, unsigned, ccompare> CCMAP;
+typedef std::unordered_map<const char *, unsigned, cc_hash, cc_equal_to > CCMAP;
 
-
-void prune()
+class RegistryImpl : public Registry
 {
-    std::stack<unsigned> deleted_ids;
-    for(IDCCMAP::iterator itr=id_cc_map.begin();
-            itr != id_cc_map.end(); ++itr)
-    {
-        const cchars * pcchars = itr->second;
-        if ((pcchars != NULL) && (pcchars->ref_count == 0))
+    private:
+        unsigned    currentID = 100;
+    public:
+        IDCCMAP id_pcc;
+        CCMAP cc_id;
+
+        ~RegistryImpl() {};
+        RegistryImpl() {};
+
+        void load(const char * filename)
         {
-            if (debug_cchars)
-                std::cerr << "Erasing  " << pcchars->id << " "<< *pcchars << nl;
-//            cc_map.erase(itr->second->chars);
-            //FIXME: can we do id_cc_map.erase(itr->first) safely here?
-//            id_cc_map[itr->first] = NULL;
-            deleted_ids.push(pcchars->id);
+            std::ifstream ifs(filename);
+            if (ifs.is_open())
+            {
+                ifs >> currentID;
+                unsigned long cc_map_size;
+                ifs >> cc_map_size;
+                while(cc_map_size--)
+                {
+                    cchars *pcc = new cchars();
+                    pcc->load(ifs);
+                    id_pcc[pcc->v_id()] = pcc;
+                    cc_id[pcc->c_str()] = pcc->v_id();
+                }
+            }
         }
-    }
 
-    while(!deleted_ids.empty())
-    {
+        void save(const char * filename)
         {
-            cc_map.erase(id_cc_map[deleted_ids.top()]->chars);
-            delete id_cc_map[deleted_ids.top()];
-            id_cc_map.erase(deleted_ids.top());
-        }
-        deleted_ids.pop();
-    }
-}
+            std::ofstream ofs(filename);
+            if (ofs.is_open())
+            {
+                unsigned long cc_map_size = id_pcc.size();
+                std::vector<unsigned> v;
+                for(IDCCMAP::iterator itr=id_pcc.begin();
+                        itr != id_pcc.end(); ++itr)
+                    v.push_back(itr->first);
+                std::sort(v.begin(), v.end());
+        
+                ofs << currentID << '\n';
+                ofs << cc_map_size << '\n';
 
-void dump()
+#if 0        
+                for(IDCCMAP::iterator itr=id_pcc.begin();
+                        itr != id_pcc.end(); ++itr)
+                {
+                    if(itr->second)
+                    {
+                        unsigned long slen = strlen(itr->second->chars);
+                        ofs << itr->first << " " << slen << " " << itr->second->chars << '\n';
+                    }
+                }
+#else
+                for(auto id: v)
+                {
+                    {
+                        id_pcc[id]->save(ofs);
+                    }
+                }
+#endif
+            }
+        }
+
+        void prune()
+        {
+            std::stack<unsigned> to_delete;
+            for(IDCCMAP::iterator itr=id_pcc.begin();
+                    itr != id_pcc.end(); ++itr)
+            {
+                const cchars * pcchars = itr->second;
+                if ((pcchars != NULL) && (pcchars->v_ref_count() == 0))
+                {
+                    if (debug_cchars)
+                        std::cerr << "Erasing  " << pcchars->v_id() << " "<< *pcchars << nl;
+                    to_delete.push(pcchars->v_id());
+                }
+            }
+
+            while(!to_delete.empty())
+            {
+                {
+                    cc_id.erase(id_pcc[to_delete.top()]->c_str());
+                    delete id_pcc[to_delete.top()];
+                    id_pcc.erase(to_delete.top());
+                }
+                to_delete.pop();
+            }
+        }
+
+        void dump()
+        {
+            std::cout << "===================" << nl;
+            std::cout << "ID to CCHARS" << nl;
+            for(IDCCMAP::iterator itr=id_pcc.begin();
+                    itr != id_pcc.end(); itr++)
+            {
+                const cchars * pcchars = itr->second;
+                if (pcchars)
+                    std::cout << "key=" << itr->first << " = id:" << pcchars->v_id() << " rc: " << pcchars->v_ref_count() << ", " << *pcchars << nl;
+                else
+                    std::cout << "key=" << itr->first << " = " << pcchars << nl;
+            }
+            std::cout << "----------" << nl;
+            std::cout << "CSTR to ID" << nl;
+            for(CCMAP::iterator itr=cc_id.begin();
+                    itr != cc_id.end(); ++itr)
+            {
+                std::cout << "key=" << itr->first << " = " << itr->second << nl;
+            }
+            std::cout << "===================" << nl;
+        }
+
+        unsigned acquire_cchars(const char * chars)
+        {
+            CCMAP::iterator find = cc_id.find(chars);
+            if (find == cc_id.end())
+            {
+                unsigned new_id = currentID++;
+                cchars * new_pcc= new cchars(new_id, chars);
+                cc_id[new_pcc->c_str()] = new_id;
+                id_pcc[new_id] = new_pcc;
+                if (debug)
+                    std::cout << "NEW   id=" << new_id << " " << cc_id.find(chars)->first << nl;
+                return new_id;
+            }
+            else
+            {
+                if (debug)
+                    std::cout << "FOUND id=" << find->second << " " << find->first << nl;
+            }
+            return find->second;
+        }
+
+        inline const cchars* getcc(unsigned id)
+        {
+            return id_pcc[id];
+        } 
+};
+
+static RegistryImpl defaultRegister;
+Registry& getRegistry()
 {
-    std::cout << "===================" << nl;
-    std::cout << "ID to CCHARS" << nl;
-    for(IDCCMAP::iterator itr=id_cc_map.begin();
-            itr != id_cc_map.end(); itr++)
-    {
-        const cchars * pcchars = itr->second;
-        if (pcchars)
-            std::cout << "key=" << itr->first << " = id:" << pcchars->id << " rc: " << pcchars->ref_count << ", " << *pcchars << nl;
-        else
-            std::cout << "key=" << itr->first << " = " << pcchars << nl;
-    }
-    std::cout << "----------" << nl;
-    std::cout << "CSTR to ID" << nl;
-    for(CCMAP::iterator itr=cc_map.begin();
-            itr != cc_map.end(); ++itr)
-    {
-        std::cout << "key=" << itr->first << " = " << itr->second << nl;
-    }
-    std::cout << "===================" << nl;
+    return defaultRegister;
 }
 
 class StaticInitializer {
@@ -387,10 +443,10 @@ String::String(): id(0)
 
 String::String(const char * const chars): id(0)
 {
-    bind(acquire_cchars(chars));
+    bind(defaultRegister.acquire_cchars(chars));
     if (debug)
     {
-        const cchars *pcc = id_cc_map[id];
+        const cchars *pcc = defaultRegister.id_pcc[id];
         cout << this << " String(const chars *) cs=" << pcc  << " ref_count" << pcc->ref_count << " id=" << id << ", " << pcc->id <<  nl;
         cout << "   +++ " << pcc->chars <<  nl;
     }
@@ -398,10 +454,10 @@ String::String(const char * const chars): id(0)
 
 String::String(const std::string& strng): id(0)
 {
-    bind(acquire_cchars(strng.c_str()));
+    bind(defaultRegister.acquire_cchars(strng.c_str()));
     if (debug)
     {
-        const cchars *pcc = id_cc_map[id];
+        const cchars *pcc = defaultRegister.id_pcc[id];
         cout << this << " String(std::string) cs=" << pcc  << " ref_count=" << pcc->ref_count << " id=" << id << ", " << pcc->id <<  nl;
         cout << "   +++ " << pcc->chars <<  nl;
     }
@@ -414,7 +470,7 @@ String::String(const String &sstr): id(0)
     {
         if(id)
         {
-            const cchars *pcc = id_cc_map[id];
+            const cchars *pcc = defaultRegister.id_pcc[id];
             cout << this << " String(CopyConstuctor) cs=" << pcc  << " ref_count=" << pcc->ref_count << " id=" << id << ", " << pcc->id <<  nl;
             cout << "   +++ " << pcc->chars <<  nl;
         }
@@ -426,7 +482,7 @@ String::String(const String &sstr): id(0)
 
 String::String(unsigned new_id): id(0)
 {
-    if(new_id && (id_cc_map.count(new_id)==0))
+    if(new_id && (defaultRegister.id_pcc.count(new_id)==0))
     {
         // bind to unknown string.
         throw std::logic_error("sstring::String::String(unsigned id) id is not present in the registry");
@@ -435,7 +491,7 @@ String::String(unsigned new_id): id(0)
     refup();
     if (debug)
     {
-        const cchars *pcc = id_cc_map[id];
+        const cchars *pcc = defaultRegister.id_pcc[id];
         cout << this << " String(id) cs=" << pcc  << " ref_count=" << pcc->ref_count << " id=" << id << ", " << pcc->id <<  nl;
         cout << "   +++ " << pcc->chars <<  nl;
     }
@@ -443,14 +499,14 @@ String::String(unsigned new_id): id(0)
 
 void String::refup()
 {
-    cchars *pcc = const_cast<cchars *>(id_cc_map[id]);
+    cchars *pcc = const_cast<cchars *>(defaultRegister.id_pcc[id]);
     pcc->ref_count++;
 }
 
 void String::refdn()
 {
-    IDCCMAP::iterator find = id_cc_map.find(id);
-    if (find != id_cc_map.end())
+    IDCCMAP::iterator find = defaultRegister.id_pcc.find(id);
+    if (find != defaultRegister.id_pcc.end())
     {
         cchars *pcc = const_cast<cchars *>(find->second);
         if (pcc == 0)
@@ -475,7 +531,7 @@ void String::bind(unsigned new_id)
     if (new_id == id)
         return;
 
-    if(new_id && (id_cc_map.count(new_id)==0))
+    if(new_id && (defaultRegister.id_pcc.count(new_id)==0))
     {
         // bind to unknown string.
         std::cerr << " bind to " << new_id << " failed" << std::endl;
@@ -486,7 +542,7 @@ void String::bind(unsigned new_id)
     {
         if (debug)
         {
-            const cchars *pcc = id_cc_map[id];
+            const cchars *pcc = defaultRegister.id_pcc[id];
             cout << "unbind   --- " << pcc->chars <<  nl;
         }
         
@@ -510,7 +566,7 @@ String::~String()
     {
         if (debug)
         {
-            const cchars *pcc = id_cc_map[id];
+            const cchars *pcc = defaultRegister.id_pcc[id];
             cout << this << " ~String(cs " << pcc  << ") ref_count=" << pcc->ref_count << " id=" << id << ", " << pcc->id <<  nl;
             cout << "   --- " << pcc->chars <<  nl;
         }
@@ -518,7 +574,7 @@ String::~String()
     }
     else
     {
-        const cchars *pcc = id_cc_map[id];
+        const cchars *pcc = defaultRegister.id_pcc[id];
         if (debug)
             cout << this << " ~String(cs " << pcc << ") id=" << id <<  nl;
     }
@@ -526,8 +582,8 @@ String::~String()
 
 std::size_t String::hash() const
 {
-//    return oat_hash(id_cc_map[id]->chars);
-    return const_cast<cchars *>(id_cc_map[id])->hashvalue();
+//    return oat_hash(defaultRegister.id_pcc[id]->chars);
+    return const_cast<cchars *>(defaultRegister.id_pcc[id])->hashvalue();
 }
 
 String& String::operator=(const String& sstr)
@@ -546,45 +602,45 @@ bool String::operator==(const String& sstr) const
 
 bool String::operator==(const std::string& cpp_str) const
 {
-    const cchars *pcc = id_cc_map[id];
+    const cchars *pcc = defaultRegister.id_pcc[id];
     return *pcc == cpp_str.c_str();
 }
 
 bool String::operator==(const char * c_str) const
 {
-    const cchars *pcc = id_cc_map[id];
+    const cchars *pcc = defaultRegister.id_pcc[id];
     return *pcc == c_str;
 }
 
 bool String::operator<(const String& sstr) const
 {
-    cchars *pcc = const_cast<cchars *>(id_cc_map[id]);
-    cchars *pcc_other = const_cast<cchars *>(id_cc_map[sstr.id]);
+    cchars *pcc = const_cast<cchars *>(defaultRegister.id_pcc[id]);
+    cchars *pcc_other = const_cast<cchars *>(defaultRegister.id_pcc[sstr.id]);
     return *pcc < *pcc_other;
 }
 
 bool String::operator<(const char *c_str) const
 {
-    cchars *pcc = const_cast<cchars *>(id_cc_map[id]);
+    cchars *pcc = const_cast<cchars *>(defaultRegister.id_pcc[id]);
     return *pcc < c_str;
 }
 
 std::string String::std_str() const
 {
-    const cchars *pcc = id_cc_map[id];
+    const cchars *pcc = defaultRegister.id_pcc[id];
     return std::string(pcc->chars);
 }
 
 std::ostream& operator<< (std::ostream& os, const String& sstr)
 {
-    const cchars *pcc = id_cc_map[sstr.id];
+    const cchars *pcc = defaultRegister.id_pcc[sstr.id];
     os << pcc->chars;
     return os;
 }
 
 const char * String::c_str() const
 {
-    const cchars *pcc = id_cc_map[id];
+    const cchars *pcc = defaultRegister.id_pcc[id];
     return pcc->chars;
 }
 
@@ -605,59 +661,6 @@ template <class Archive>
 }
 
 // Module functions
-void load(const char * filename)
-{
-    std::ifstream ifs(filename);
-    if (ifs.is_open())
-    {
-        ifs >> cc_id;
-        unsigned long cc_map_size;
-        ifs >> cc_map_size;
-        while(cc_map_size--)
-        {
-            cchars *pcc = new cchars();
-            pcc->load(ifs);
-            id_cc_map[pcc->id] = pcc;
-            cc_map[pcc->chars] = pcc->id;
-        }
-    }
-}
-
-void save(const char * filename)
-{
-    std::ofstream ofs(filename);
-    if (ofs.is_open())
-    {
-        unsigned long cc_map_size = id_cc_map.size();
-        std::vector<unsigned> v;
-        for(IDCCMAP::iterator itr=id_cc_map.begin();
-                itr != id_cc_map.end(); ++itr)
-            v.push_back(itr->first);
-        std::sort(v.begin(), v.end());
-
-        ofs << cc_id << '\n';
-        ofs << cc_map_size << '\n';
-
-#if 0        
-        for(IDCCMAP::iterator itr=id_cc_map.begin();
-                itr != id_cc_map.end(); ++itr)
-        {
-            if(itr->second)
-            {
-                unsigned long slen = strlen(itr->second->chars);
-                ofs << itr->first << " " << slen << " " << itr->second->chars << '\n';
-            }
-        }
-#else
-        for(auto id: v)
-        {
-            {
-                id_cc_map[id]->save(ofs);
-            }
-        }
-    }
-}
-#endif
 
 } // namespace
 
