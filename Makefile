@@ -26,7 +26,7 @@ OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o $(OD)/main.o \
 	   $(OD)/audio_tags.o  $(OD)/tracks_db.o 
 
 S_OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o $(OD)/s_main.o \
-	   $(OD)/audio_tags.o  $(OD)/songs_db.o $(OD)/sstring.o
+	   $(OD)/audio_tags.o  $(OD)/songs_db.o $(OD)/sstring.o $(OD)/tracks_db.o
 
 all: $(BIN)/rtags $(BIN)/s_rtags $(BIN)/exp $(BIN)/bsearch $(BIN)/sort_example $(BIN)/ios
 

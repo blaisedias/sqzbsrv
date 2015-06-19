@@ -3,11 +3,11 @@
 //
 #include <iostream>
 #include <string.h>
-#include "sstring.h"
-#include "songs_db.h"
 #include "scanner.h"
 #include "audio_tags.h"
 #include "audio_file_tags.h"
+#include "tracks_db.h"
+#include "songs_db.h"
 #include <vector>
 
 bool profile = false;
@@ -53,7 +53,7 @@ void process_command(const char *cmd, audio_file_tags::AudioFileRecordStore& rec
 
     if (0 == strcmp(cmd, "scan"))
     {
-        profile_start("s_rtags.scan.prof");
+        profile_start("scan.prof");
         Scanner::Scanner scanner(record_store);
         for(unsigned ix=0; ix < args.size(); ix++)
             scanner.scan(args[ix]);
@@ -61,22 +61,18 @@ void process_command(const char *cmd, audio_file_tags::AudioFileRecordStore& rec
     }
     if (0 == strcmp(cmd, "load"))
     {
-        profile_start("s_rtags.load.prof");
-        sstring::load("data/songs_db_cchars.dat");
-        std::cout << " cchars loaded" << std::endl;
+        profile_start("load.prof");
         audio_tags::load();
-        std::cout << " audio_tags loaded" << std::endl;
+        std::cerr << " audio_tags loaded" << std::endl;
         record_store.load();
-        std::cout << " record_store loaded" << std::endl;
+        std::cerr << " record_store loaded" << std::endl;
         profile_stop();
     }
     if (0 == strcmp(cmd, "save"))
     {
-        profile_start("s_rtags.save.prof");
+        profile_start("save.prof");
         record_store.save();
         audio_tags::save();
-        sstring::prune();
-        sstring::save("data/songs_db_cchars.dat");
         profile_stop();
     }
     if (0 == strcmp(cmd, "dump"))
@@ -114,7 +110,9 @@ inline bool is_command(const char *str)
 int main( int argc, char* argv[] )
 {
   std::vector<const char *> args;
-  audio_file_tags::AudioFileRecordStore* record_store = songs_db::new_record_store();
+  audio_file_tags::AudioFileRecordStore* record_store = 0;
+//  audio_file_tags::AudioFileRecordStore* record_store = tracks_db::new_record_store();
+//  audio_file_tags::AudioFileRecordStore* record_store = songs_db::new_record_store();
   if (argc > 1)
   {
       int ix_argv = 1;
@@ -123,6 +121,18 @@ int main( int argc, char* argv[] )
           const char *cmd = argv[ix_argv];
           ix_argv++;
           args.clear();
+          if (0 == strcmp(cmd, "type"))
+          {
+              if (ix_argv < argc)
+              {
+                  if (0 == strcmp(argv[ix_argv], "tracks"))
+                      record_store = tracks_db::new_record_store();
+                  if (0 == strcmp(argv[ix_argv], "songs"))
+                      record_store = songs_db::new_record_store();
+              }
+              ix_argv++;
+              continue;
+          }
           if (!is_command(cmd))
           {
               std::cerr << "Ignoring " << cmd << std::endl;
