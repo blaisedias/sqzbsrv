@@ -19,9 +19,9 @@ vector<sstring::String> strings;
 
 int main(int argc, char *argv[])
 {
-    sstring::load("data/exp_cchars.dat");
+    sstring::getRegistry().load("data/exp_cchars.dat");
 if(cc_dump)
-    sstring::dump();
+    sstring::getRegistry().dump();
     strings.reserve(100);
     if (true)
     {
@@ -40,9 +40,9 @@ std::cout << "== prune test  " << std::endl;
     sstring::String *ctcs = new sstring::String("Can't touch this can't see this !!!!!!!!");
     std::cout << *ctcs << std::endl;
     delete ctcs;
-    sstring::prune();
+    sstring::getRegistry().prune();
 if(cc_dump)
-    sstring::dump();
+    sstring::getRegistry().dump();
 
     if (true)
     {
@@ -61,14 +61,14 @@ std::cout << "== II  " << std::endl;
         delete zambia2;
         
 if(cc_dump)
-    sstring::dump();
+    sstring::getRegistry().dump();
 
-        sstring::save("data/exp_cchars.dat");
+        sstring::getRegistry().save("data/exp_cchars.dat");
     }
 
     std::cout << "---------------" << std::endl;
 if(cc_dump)
-    sstring::dump();
+    sstring::getRegistry().dump();
     if(true)
     {
 std::cout << "== III  " << std::endl;
@@ -92,7 +92,7 @@ std::cout << "== III  " << std::endl;
         {
             std::cout << strings[ix] << std::endl;
         }
-        sstring::save("data/exp_cchars.dat");
+        sstring::getRegistry().save("data/exp_cchars.dat");
         
         std::ofstream ofs("data/exp_sstrings.dat");
         if (ofs.is_open())
