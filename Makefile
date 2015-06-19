@@ -22,7 +22,7 @@ LIBS = -lboost_filesystem -lboost_system -lboost_serialization -ltag $(TARG_LIBS
 GD = Makefile
 CF = -std=c++11 -Wall -g $(TARG_CF)
 
-OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o $(OD)/main.o \
+OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o $(OD)/tmain.o \
 	   $(OD)/audio_tags.o  $(OD)/tracks_db.o 
 
 S_OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o $(OD)/s_main.o \
@@ -66,7 +66,7 @@ $(OD)/fs_utils.o: fs_utils.cpp fs_utils.h $(GD)
 $(OD)/scanner.o: scanner.cpp audio_file_tags.h fs_utils.h scanner.h $(GD)
 	g++ $(CF) -c -o $(@) $< 
 
-$(OD)/main.o: main.cpp scanner.h $(GD)
+$(OD)/tmain.o: tmain.cpp scanner.h $(GD)
 	g++ $(CF) -c -o $(@) $< 
 
 $(OD)/s_main.o: s_main.cpp sstring.h songs_db.h scanner.h audio_tags.h audio_file_tags.h
