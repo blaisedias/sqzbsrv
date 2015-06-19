@@ -27,14 +27,15 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         RecordStore():records_location("record_store.dat") {}
         RecordStore(std::string location):records_location(location) {}
         RecordStore(const char * location):records_location(location) {}
+        virtual ~RecordStore() {}
 
         //serialisation support
-        void save()
+        virtual void save()
         {
             fsave(records_location.c_str(), records);
         }
 
-        void load()
+        virtual void load()
         {
             fload(records_location.c_str(), records);
         }

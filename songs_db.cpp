@@ -272,6 +272,20 @@ class songsRecordStore: public record_store::RecordStore<KeyType, RecordType>
             for(auto ts : tag_strings)
                 fixed_strings_list.push_back(ts);
         }
+
+        void save()
+        {
+            record_store::RecordStore<KeyType, RecordType>::save();
+            sstring::getRegistry().prune();
+            sstring::getRegistry().save("data/songs_db_cchars.dat");
+        }
+
+        void load()
+        {
+            sstring::getRegistry().load("data/songs_db_cchars.dat");
+            std::cerr << " cchars loaded" << std::endl;
+            record_store::RecordStore<KeyType, RecordType>::load();
+        }
 };
 
 //audio_file_tags::AudioFileRecordStore* new_record_store(const char *database_location, const char *string_defs_file)
