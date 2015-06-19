@@ -15,6 +15,7 @@ data/*
 cscope.*
 *.swp
 *.prof
+*.kdev4
  
 # Packages #
 ############
