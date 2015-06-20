@@ -28,7 +28,7 @@ OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o $(OD)/tmain.o \
 S_OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o $(OD)/s_main.o \
 	   $(OD)/audio_tags.o  $(OD)/songs_db.o $(OD)/sstring.o $(OD)/tracks_db.o
 
-all: $(BIN)/rtags $(BIN)/s_rtags $(BIN)/exp $(BIN)/bsearch $(BIN)/sort_example $(BIN)/ios
+all: $(BIN)/rtags $(BIN)/s_rtags $(BIN)/exp
 
 .PHONY: clean
 
@@ -72,15 +72,6 @@ $(OD)/tmain.o: tmain.cpp scanner.h $(GD)
 $(OD)/s_main.o: s_main.cpp sstring.h songs_db.h scanner.h audio_tags.h audio_file_tags.h
 	g++ $(CF) -c -o $(@) $< 
 
-bin/sort_example: $(OD)/sort_example.o
-	g++ -o $(@) $<
-
 bin/exp: $(OD)/exp.o $(OD)/sstring.o
 	g++ -o $(@) $^  -lboost_filesystem -lboost_system -lboost_serialization
-
-bin/bsearch: $(OD)/bsearch.o 
-	g++ -o $(@) $^  -lboost_filesystem -lboost_system -lboost_serialization
-
-$(BIN)/ios: $(OD)/ios.o
-	g++ $(CF) -o $(BIN)/ios $^ $(LIBDIRS) $(LIBS)
 
