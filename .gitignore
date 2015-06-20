@@ -16,6 +16,7 @@ cscope.*
 *.swp
 *.prof
 *.kdev4
+build/
  
 # Packages #
 ############
