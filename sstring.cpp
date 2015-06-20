@@ -195,7 +195,7 @@ class cchars
             return hashv;
         }
 
-        inline const char* const c_str() const
+        inline const char* const v_str() const
         {
             return chars;
         }
@@ -293,7 +293,7 @@ class RegistryImpl : public Registry
                     cchars *pcc = new cchars();
                     pcc->load(ifs);
                     id_pcc[pcc->v_id()] = pcc;
-                    cc_id[pcc->c_str()] = pcc->v_id();
+                    cc_id[pcc->v_str()] = pcc->v_id();
                 }
             }
         }
@@ -352,7 +352,7 @@ class RegistryImpl : public Registry
             while(!to_delete.empty())
             {
                 {
-                    cc_id.erase(id_pcc[to_delete.top()]->c_str());
+                    cc_id.erase(id_pcc[to_delete.top()]->v_str());
                     delete id_pcc[to_delete.top()];
                     id_pcc.erase(to_delete.top());
                 }
@@ -390,7 +390,7 @@ class RegistryImpl : public Registry
             {
                 unsigned new_id = currentID++;
                 cchars * new_pcc= new cchars(new_id, chars);
-                cc_id[new_pcc->c_str()] = new_id;
+                cc_id[new_pcc->v_str()] = new_id;
                 id_pcc[new_id] = new_pcc;
                 if (debug)
                     std::cout << "NEW   id=" << new_id << " " << cc_id.find(chars)->first << nl;
