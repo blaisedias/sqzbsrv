@@ -275,6 +275,7 @@ class songsRecordStore: public record_store::RecordStore<KeyType, RecordType>
 
         void save()
         {
+            std::lock_guard<std::recursive_mutex> lock{record_store::RecordStore<KeyType, RecordType>::mutex};
             record_store::RecordStore<KeyType, RecordType>::save();
             sstring::getRegistry().prune();
             sstring::getRegistry().save("data/songs_db_cchars.dat");
@@ -282,6 +283,7 @@ class songsRecordStore: public record_store::RecordStore<KeyType, RecordType>
 
         void load()
         {
+            std::lock_guard<std::recursive_mutex> lock{record_store::RecordStore<KeyType, RecordType>::mutex};
             sstring::getRegistry().load("data/songs_db_cchars.dat");
             std::cerr << " cchars loaded" << std::endl;
             record_store::RecordStore<KeyType, RecordType>::load();

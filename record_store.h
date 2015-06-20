@@ -3,6 +3,7 @@
 
 #include <unordered_map>
 #include "audio_file_tags.h"
+#include <mutex>
 
 namespace record_store {
 // Serialisation support functions, are externalised, so that they can be serialised as desired.
@@ -23,6 +24,8 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         std::unordered_map<KeyType, RecordType> records;
         // file records storage location
         std::string records_location;
+    protected:
+        std::recursive_mutex   mutex;
     public:
         RecordStore():records_location("record_store.dat") {}
         RecordStore(std::string location):records_location(location) {}
@@ -32,11 +35,13 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         //serialisation support
         virtual void save()
         {
+            std::lock_guard<std::recursive_mutex> lock{mutex};
             fsave(records_location.c_str(), records);
         }
 
         virtual void load()
         {
+            std::lock_guard<std::recursive_mutex> lock{mutex};
             fload(records_location.c_str(), records);
         }
 
@@ -57,6 +62,7 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
 
         bool record_update_required(const char *location)
         {
+            std::lock_guard<std::recursive_mutex> lock{mutex};
             if (records.find(location) == records.end())
                 return true;
             return records[location].update_required();
@@ -64,16 +70,19 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
 
         bool record_update_required(const std::string &location)
         {
+            std::lock_guard<std::recursive_mutex> lock{mutex};
             return record_update_required(location.c_str());
         }
 
         void remove_record(const std::string &location)
         {
+            std::lock_guard<std::recursive_mutex> lock{mutex};
             records.erase(KeyType(location));
         }
 
         void remove_record(const char *location)
         {
+            std::lock_guard<std::recursive_mutex> lock{mutex};
             records.erase(KeyType(location));
         }
 
