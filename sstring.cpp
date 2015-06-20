@@ -14,8 +14,9 @@
 
 namespace sstring {
 
-const bool debug_cchars=false;
-const bool debug=false;
+const bool debug_rc_cstr=false;
+const bool debug_registry=false;
+const bool debug_string=false;
 std::ostream& cout = std::cout;
 #define nl std::endl
 const char sep = ';';
@@ -73,9 +74,7 @@ struct cc_hash
 };
 
 
-class cchars;
-
-static char* new_cstr(const char * chars_in=NULL, char* prev_chars=NULL)
+static char* new_chars(const char * chars_in=NULL, char* prev_chars=NULL)
 {
     char* chars;
     if (chars_in)
@@ -94,7 +93,7 @@ static char* new_cstr(const char * chars_in=NULL, char* prev_chars=NULL)
     return chars;
 }
 
-class cchars
+class rc_cstr
 {
     private:
         unsigned id=0;
@@ -105,49 +104,49 @@ class cchars
         friend class String;
 
         // Prevent trivial assignment.
-        cchars& operator=(const cchars&);
+        rc_cstr& operator=(const rc_cstr&);
     public:
-        cchars(const char * const chars_in=NULL):chars(new_cstr(chars_in))
+        rc_cstr(const char * const chars_in=NULL):chars(new_chars(chars_in))
         {
-            if (debug_cchars)
+            if (debug_rc_cstr)
             {
-                cout << this << " cchars(" << chars_in  << ")" << (void *)chars << nl;
+                cout << this << " rc_cstr(" << chars_in  << ")" << (void *)chars << nl;
                 cout << this << "           " << chars << nl;
             }
         }
 
-        cchars(unsigned new_id, const char * const chars_in, std::size_t hashval=0):id(new_id),chars(new_cstr(chars_in)),hashv(hashval)
+        rc_cstr(unsigned new_id, const char * const chars_in, std::size_t hashval=0):id(new_id),chars(new_chars(chars_in)),hashv(hashval)
         {
-            if (debug_cchars)
+            if (debug_rc_cstr)
             {
-                cout << this << " cchars(" << chars_in  << ", " << id << ")" << (void *)chars << nl;
+                cout << this << " rc_cstr(" << chars_in  << ", " << id << ")" << (void *)chars << nl;
                 cout << this << "           " << chars << nl;
             }
         }
 
 #if 0
         // CTOR required for STL containers
-        cchars():chars(new_cstr())
+        rc_cstr():chars(new_chars())
         {
-            if (debug_cchars)
-                cout << this << " cchars()" << nl;
+            if (debug_rc_cstr)
+                cout << this << " rc_cstr()" << nl;
         }
 
         // copy constructor CTOR required for STL containers
-        cchars(const cchars& cs):ref_count(0),id(0),chars(new_cstr())
+        rc_cstr(const rc_cstr& cs):ref_count(0),id(0),chars(new_chars())
         {
-            if (debug_cchars)
-                cout << this << " cchars( CopyConstructor " << &cs  << ")" << id << ", " << ref_count << " chars*=" << (void *)chars << nl;
+            if (debug_rc_cstr)
+                cout << this << " rc_cstr( CopyConstructor " << &cs  << ")" << id << ", " << ref_count << " chars*=" << (void *)chars << nl;
             if (cs.ref_count)
             {
                 //Should never happen
                 cout << " rc " << cs.ref_count << nl;
-                throw std::logic_error("sstring::cchars copy constructor: copy from cchars object which has non 0 reference count");
+                throw std::logic_error("sstring::rc_cstr copy constructor: copy from rc_cstr object which has non 0 reference count");
             }
             ref_count = 0;
             id = cs.id;
-            chars = new_cstr(cs.chars, chars);
-            if (debug_cchars)
+            chars = new_chars(cs.chars, chars);
+            if (debug_rc_cstr)
             {
                 cout << this << "           " << id << ", " << ref_count << " chars*=" << (void *)chars << nl;
                 cout << this << "           " << chars << nl;
@@ -155,11 +154,11 @@ class cchars
         }
 #endif
         // DTOR
-        ~cchars()
+        ~rc_cstr()
         {
-            if(debug_cchars)
+            if(debug_rc_cstr)
             {
-                cout << this << " ~cchars() ref_count=" << ref_count << " id=" << id << " chars*=" << (void *)chars << nl;
+                cout << this << " ~rc_cstr() ref_count=" << ref_count << " id=" << id << " chars*=" << (void *)chars << nl;
                 cout << this << "           " << chars << nl;
             }
             delete [] chars;
@@ -175,18 +174,18 @@ class cchars
             return strcmp(chars, cmp_chars) < 0;
         }
 
-        bool operator<(const cchars &cmp_cchars) const
+        bool operator<(const rc_cstr &cmp_cchars) const
         {
             return strcmp(chars, cmp_cchars.chars) < 0;
         }
 
-        bool operator<(const cchars *cmp_cchars) const
+        bool operator<(const rc_cstr *cmp_cchars) const
         {
             return strcmp(chars, cmp_cchars->chars) < 0;
         }
 
         friend std::ostream& operator<< (std::ostream& os, const String& sstr);
-        friend std::ostream& operator<< (std::ostream&, const cchars&);
+        friend std::ostream& operator<< (std::ostream&, const rc_cstr&);
 
         inline std::size_t hashvalue()
         {
@@ -232,7 +231,7 @@ class cchars
             ar & hashv;
             ar & tmp;
 
-            chars = new_cstr(tmp.c_str(), chars);
+            chars = new_chars(tmp.c_str(), chars);
         }
         BOOST_SERIALIZATION_SPLIT_MEMBER();
 #endif
@@ -257,14 +256,14 @@ class cchars
         }
 };
 
-std::ostream& operator<< (std::ostream& os, const cchars& cs)
+std::ostream& operator<< (std::ostream& os, const rc_cstr& cs)
 {
     os << cs.chars;
     return os;
 }
 
-// string id to cchars instance map
-typedef std::unordered_map<unsigned, const cchars*> IDCCMAP;
+// string id to rc_cstr instance map
+typedef std::unordered_map<unsigned, const rc_cstr*> IDCCMAP;
 // null terminated char * to id map, char * is pointing to cchar instance chars member
 //typedef std::map<const char *, unsigned, ccompare> CCMAP;
 typedef std::unordered_map<const char *, unsigned, cc_hash, cc_equal_to > CCMAP;
@@ -290,7 +289,7 @@ class RegistryImpl : public Registry
                 ifs >> cc_map_size;
                 while(cc_map_size--)
                 {
-                    cchars *pcc = new cchars();
+                    rc_cstr *pcc = new rc_cstr();
                     pcc->load(ifs);
                     id_pcc[pcc->v_id()] = pcc;
                     cc_id[pcc->v_str()] = pcc->v_id();
@@ -340,10 +339,10 @@ class RegistryImpl : public Registry
             for(IDCCMAP::iterator itr=id_pcc.begin();
                     itr != id_pcc.end(); ++itr)
             {
-                const cchars * pcchars = itr->second;
+                const rc_cstr * pcchars = itr->second;
                 if ((pcchars != NULL) && (pcchars->v_ref_count() == 0))
                 {
-                    if (debug_cchars)
+                    if (debug_rc_cstr)
                         std::cerr << "Erasing  " << pcchars->v_id() << " "<< *pcchars << nl;
                     to_delete.push(pcchars->v_id());
                 }
@@ -363,18 +362,18 @@ class RegistryImpl : public Registry
         void dump()
         {
             std::cout << "===================" << nl;
-            std::cout << "ID to CCHARS" << nl;
+            std::cout << "ID to RC_CSTR" << nl;
             for(IDCCMAP::iterator itr=id_pcc.begin();
                     itr != id_pcc.end(); itr++)
             {
-                const cchars * pcchars = itr->second;
+                const rc_cstr * pcchars = itr->second;
                 if (pcchars)
                     std::cout << "key=" << itr->first << " = id:" << pcchars->v_id() << " rc: " << pcchars->v_ref_count() << ", " << *pcchars << nl;
                 else
                     std::cout << "key=" << itr->first << " = " << pcchars << nl;
             }
             std::cout << "----------" << nl;
-            std::cout << "CSTR to ID" << nl;
+            std::cout << "RC_CSTR to ID" << nl;
             for(CCMAP::iterator itr=cc_id.begin();
                     itr != cc_id.end(); ++itr)
             {
@@ -389,22 +388,22 @@ class RegistryImpl : public Registry
             if (find == cc_id.end())
             {
                 unsigned new_id = currentID++;
-                cchars * new_pcc= new cchars(new_id, chars);
+                rc_cstr * new_pcc= new rc_cstr(new_id, chars);
                 cc_id[new_pcc->v_str()] = new_id;
                 id_pcc[new_id] = new_pcc;
-                if (debug)
+                if (debug_registry)
                     std::cout << "NEW   id=" << new_id << " " << cc_id.find(chars)->first << nl;
                 return new_id;
             }
             else
             {
-                if (debug)
+                if (debug_registry)
                     std::cout << "FOUND id=" << find->second << " " << find->first << nl;
             }
             return find->second;
         }
 
-        inline const cchars* getcc(unsigned id)
+        inline const rc_cstr* getcc(unsigned id)
         {
             return id_pcc[id];
         } 
@@ -444,9 +443,9 @@ String::String(): id(0)
 String::String(const char * const chars): id(0)
 {
     bind(defaultRegister.acquire_cchars(chars));
-    if (debug)
+    if (debug_string)
     {
-        const cchars *pcc = defaultRegister.id_pcc[id];
+        const rc_cstr *pcc = defaultRegister.id_pcc[id];
         cout << this << " String(const chars *) cs=" << pcc  << " ref_count" << pcc->ref_count << " id=" << id << ", " << pcc->id <<  nl;
         cout << "   +++ " << pcc->chars <<  nl;
     }
@@ -455,9 +454,9 @@ String::String(const char * const chars): id(0)
 String::String(const std::string& strng): id(0)
 {
     bind(defaultRegister.acquire_cchars(strng.c_str()));
-    if (debug)
+    if (debug_string)
     {
-        const cchars *pcc = defaultRegister.id_pcc[id];
+        const rc_cstr *pcc = defaultRegister.id_pcc[id];
         cout << this << " String(std::string) cs=" << pcc  << " ref_count=" << pcc->ref_count << " id=" << id << ", " << pcc->id <<  nl;
         cout << "   +++ " << pcc->chars <<  nl;
     }
@@ -466,11 +465,11 @@ String::String(const std::string& strng): id(0)
 String::String(const String &sstr): id(0)
 {
     bind(sstr.id);
-    if (debug)
+    if (debug_string)
     {
         if(id)
         {
-            const cchars *pcc = defaultRegister.id_pcc[id];
+            const rc_cstr *pcc = defaultRegister.id_pcc[id];
             cout << this << " String(CopyConstuctor) cs=" << pcc  << " ref_count=" << pcc->ref_count << " id=" << id << ", " << pcc->id <<  nl;
             cout << "   +++ " << pcc->chars <<  nl;
         }
@@ -489,9 +488,9 @@ String::String(unsigned new_id): id(0)
     }
     id=new_id;
     refup();
-    if (debug)
+    if (debug_string)
     {
-        const cchars *pcc = defaultRegister.id_pcc[id];
+        const rc_cstr *pcc = defaultRegister.id_pcc[id];
         cout << this << " String(id) cs=" << pcc  << " ref_count=" << pcc->ref_count << " id=" << id << ", " << pcc->id <<  nl;
         cout << "   +++ " << pcc->chars <<  nl;
     }
@@ -499,7 +498,7 @@ String::String(unsigned new_id): id(0)
 
 void String::refup()
 {
-    cchars *pcc = const_cast<cchars *>(defaultRegister.id_pcc[id]);
+    rc_cstr *pcc = const_cast<rc_cstr *>(defaultRegister.id_pcc[id]);
     pcc->ref_count++;
 }
 
@@ -508,7 +507,7 @@ void String::refdn()
     IDCCMAP::iterator find = defaultRegister.id_pcc.find(id);
     if (find != defaultRegister.id_pcc.end())
     {
-        cchars *pcc = const_cast<cchars *>(find->second);
+        rc_cstr *pcc = const_cast<rc_cstr *>(find->second);
         if (pcc == 0)
         {
             std::cerr << "@refdn for id=" << id << ", pcc == 0" << std::endl;
@@ -524,7 +523,7 @@ void String::refdn()
 
 void String::bind(unsigned new_id)
 {
-    if (debug)
+    if (debug_string)
         cout << this << " bind(" << ")" << new_id << nl;
 
     // assign to self
@@ -540,9 +539,9 @@ void String::bind(unsigned new_id)
 
     if(id)
     {
-        if (debug)
+        if (debug_string)
         {
-            const cchars *pcc = defaultRegister.id_pcc[id];
+            const rc_cstr *pcc = defaultRegister.id_pcc[id];
             cout << "unbind   --- " << pcc->chars <<  nl;
         }
         
@@ -564,9 +563,9 @@ String::~String()
 {
     if (id)
     {
-        if (debug)
+        if (debug_string)
         {
-            const cchars *pcc = defaultRegister.id_pcc[id];
+            const rc_cstr *pcc = defaultRegister.id_pcc[id];
             cout << this << " ~String(cs " << pcc  << ") ref_count=" << pcc->ref_count << " id=" << id << ", " << pcc->id <<  nl;
             cout << "   --- " << pcc->chars <<  nl;
         }
@@ -574,8 +573,8 @@ String::~String()
     }
     else
     {
-        const cchars *pcc = defaultRegister.id_pcc[id];
-        if (debug)
+        const rc_cstr *pcc = defaultRegister.id_pcc[id];
+        if (debug_string)
             cout << this << " ~String(cs " << pcc << ") id=" << id <<  nl;
     }
 }
@@ -583,14 +582,14 @@ String::~String()
 std::size_t String::hash() const
 {
 //    return oat_hash(defaultRegister.id_pcc[id]->chars);
-    return const_cast<cchars *>(defaultRegister.id_pcc[id])->hashvalue();
+    return const_cast<rc_cstr *>(defaultRegister.id_pcc[id])->hashvalue();
 }
 
 String& String::operator=(const String& sstr)
 {
     bind(sstr.id);
 
-    if (debug)
+    if (debug_string)
         cout << this << " =  " << &sstr <<  nl;
     return *this;
 }
@@ -602,45 +601,45 @@ bool String::operator==(const String& sstr) const
 
 bool String::operator==(const std::string& cpp_str) const
 {
-    const cchars *pcc = defaultRegister.id_pcc[id];
+    const rc_cstr *pcc = defaultRegister.id_pcc[id];
     return *pcc == cpp_str.c_str();
 }
 
 bool String::operator==(const char * c_str) const
 {
-    const cchars *pcc = defaultRegister.id_pcc[id];
+    const rc_cstr *pcc = defaultRegister.id_pcc[id];
     return *pcc == c_str;
 }
 
 bool String::operator<(const String& sstr) const
 {
-    cchars *pcc = const_cast<cchars *>(defaultRegister.id_pcc[id]);
-    cchars *pcc_other = const_cast<cchars *>(defaultRegister.id_pcc[sstr.id]);
+    rc_cstr *pcc = const_cast<rc_cstr *>(defaultRegister.id_pcc[id]);
+    rc_cstr *pcc_other = const_cast<rc_cstr *>(defaultRegister.id_pcc[sstr.id]);
     return *pcc < *pcc_other;
 }
 
 bool String::operator<(const char *c_str) const
 {
-    cchars *pcc = const_cast<cchars *>(defaultRegister.id_pcc[id]);
+    rc_cstr *pcc = const_cast<rc_cstr *>(defaultRegister.id_pcc[id]);
     return *pcc < c_str;
 }
 
 std::string String::std_str() const
 {
-    const cchars *pcc = defaultRegister.id_pcc[id];
+    const rc_cstr *pcc = defaultRegister.id_pcc[id];
     return std::string(pcc->chars);
 }
 
 std::ostream& operator<< (std::ostream& os, const String& sstr)
 {
-    const cchars *pcc = defaultRegister.id_pcc[sstr.id];
+    const rc_cstr *pcc = defaultRegister.id_pcc[sstr.id];
     os << pcc->chars;
     return os;
 }
 
 const char * String::c_str() const
 {
-    const cchars *pcc = defaultRegister.id_pcc[id];
+    const rc_cstr *pcc = defaultRegister.id_pcc[id];
     return pcc->chars;
 }
 
@@ -655,7 +654,7 @@ template <class Archive>
 template <class Archive>
     void String::save(Archive &ar, const unsigned int version) const
 {
-    if (debug)
+    if (debug_string)
         cout << this << " save(" << ")" << id << nl;
     ar & id;
 }
