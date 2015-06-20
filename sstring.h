@@ -41,6 +41,7 @@ class String {
         std::size_t hash() const;
 };
 
+// String data database object interface.
 class Registry {
     public:
         virtual void load(const char * filename)=0;
@@ -50,6 +51,7 @@ class Registry {
         virtual ~Registry() {};
 };
 
+// Currently only support for a single default string data database.
 Registry& getRegistry();
 
 } // sstring
