@@ -174,7 +174,15 @@ void SongInfo::update(const std::string tag, const std::string value)
 {
     if(!audio_tags::is_supported(tag))
         return;
-    infomap.emplace(tag, value);
+    bool duplicate = false;
+    auto range = infomap.equal_range(tag);
+    for (auto it=range.first; it != range.second; ++it)
+    {
+        if (it->second == value)
+            duplicate = true;
+    }
+    if (!duplicate)
+        infomap.emplace(tag, value);
     complete = false;
 }
 
