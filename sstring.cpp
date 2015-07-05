@@ -21,6 +21,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include <unordered_map>
 #include <stack>
+#include <atomic>
 #include <assert.h>
 #include "sstring.h"
 
@@ -118,7 +119,7 @@ class rc_cstr
         unsigned id=0;
         char * chars;
         std::size_t hashv=0;
-        int ref_count=0;
+        std::atomic<int> ref_count{0};
 
         friend class String;
 
