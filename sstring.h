@@ -40,11 +40,10 @@ class String {
         inline void refup();
         inline void refdn();
     public:
-        String();
         String(const char * const chars);
         String(const String &sstr);
         String(const std::string& strng);
-        String(unsigned id);
+        String(unsigned id=0);
         virtual ~String();
 
         String& operator=(const String& sstr);
