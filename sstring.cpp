@@ -22,6 +22,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 #include <unordered_map>
 #include <stack>
 #include <atomic>
+#include <mutex>
 #include <assert.h>
 #include "sstring.h"
 
@@ -294,6 +295,7 @@ class RegistryImpl : public Registry
         unsigned    currentID = 100;
         IDCCMAP id_pcc;
         CCMAP cc_id;
+        std::mutex mtx;
 
     public:
         ~RegistryImpl() {};
@@ -324,32 +326,34 @@ class RegistryImpl : public Registry
             {
                 unsigned long cc_map_size = id_pcc.size();
                 std::vector<unsigned> v;
-                for(IDCCMAP::iterator itr=id_pcc.begin();
-                        itr != id_pcc.end(); ++itr)
-                    v.push_back(itr->first);
+
+                // "snapshot", lock, then record the ids we want to write out,
+                // at the same time bumping up the reference count, so that
+                // rc_cstr instances to ensure that the rc_cstr are kept alive till 
+                // they've been written out.
+                // pruning whilst saving will not prune all unused strings.
+                // thats okay, pruning should be done before saving.
+                // And ideally saving should be during steady state shutdown.
+                {
+                    std::lock_guard<std::mutex> lockg(mtx);
+                    v.reserve(id_pcc.size());
+                    for(IDCCMAP::iterator itr=id_pcc.begin();
+                            itr != id_pcc.end(); ++itr)
+                    {
+                        v.push_back(itr->first);
+                        refup(itr->first);
+                    }
+                }
                 std::sort(v.begin(), v.end());
         
                 ofs << currentID << '\n';
                 ofs << cc_map_size << '\n';
 
-#if 0        
-                for(IDCCMAP::iterator itr=id_pcc.begin();
-                        itr != id_pcc.end(); ++itr)
-                {
-                    if(itr->second)
-                    {
-                        unsigned long slen = strlen(itr->second->chars);
-                        ofs << itr->first << " " << slen << " " << itr->second->chars << '\n';
-                    }
-                }
-#else
                 for(auto id: v)
                 {
-                    {
-                        id_pcc[id]->save(ofs);
-                    }
+                    id_pcc[id]->save(ofs);
+                    refdn(id);
                 }
-#endif
             }
         }
 
@@ -453,7 +457,7 @@ class RegistryImpl : public Registry
             }
             else
             {
-                std::cerr << "@refdn for absent id=" << id << std::endl;
+//                std::cerr << "@refdn for absent id=" << id << std::endl;
             }
         }
 };
