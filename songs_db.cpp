@@ -220,12 +220,18 @@ void SongInfo::update(const std::string tag, int value)
 void SongInfo::update_start()
 {
     complete = false;
-    for(INFOMAP::iterator itr=infomap.begin();
-            itr != infomap.end(); ++itr)
+    std::vector<sstring::String> v;
+    v.reserve(infomap.size());
+    for(INFOMAP::iterator itr=infomap.begin(); itr != infomap.end(); ++itr)
     {
         if ((itr->first == audio_tags::FILEPATH) || (itr->first == audio_tags::DIRECTORY))
             continue;
-        infomap.erase(itr->first);
+        v.push_back(itr->first);
+    }
+
+    for(auto x: v)
+    {
+        infomap.erase(x);
     }
 }
 

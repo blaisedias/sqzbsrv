@@ -36,8 +36,12 @@ int handle_file(const char * filename, AudioFileRecordStore& record_store)
 //    if (record_store.record_update_required(filename) == false)
 //        return 1;
 
+    if (record_store.record_update_required(filename) == false)
+        return 0;
+
     TagLib::FileRef f(filename);
-    if (!f.isNull() && f.tag() && record_store.record_update_required(filename))
+//    if (!f.isNull() && f.tag() && record_store.record_update_required(filename))
+    if (!f.isNull() && f.tag())
     {
         AudioFileRecord &record = record_store.get_record(filename);
         record.update_start();
