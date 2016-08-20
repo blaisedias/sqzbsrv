@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 rm txt/*.txt
 rm data/*.dat
 time bin/s_rtags type tracks scan /media/seagate500GB/music/collection/flacs.cds /media/seagate500GB/music/collection/mp3s.only save
