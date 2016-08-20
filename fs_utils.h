@@ -33,5 +33,7 @@ namespace fs_utils
           virtual ~handler(){};
           void dirwalk(const char * path, bool ignore_symlinks=true );
   };
+
+  extern bool verbose;
 }
 #endif

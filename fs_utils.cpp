@@ -32,6 +32,9 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 namespace boostfs = boost::filesystem;
 
 namespace fs_utils {
+
+bool verbose = false;    
+
 void dirwalk(const char * path_str,
         int (*handle_file)(const char *),
         int (*handle_directory)(const char *),
@@ -63,6 +66,8 @@ void dirwalk(const char * path_str,
             {
                 //handle_file(dir_iter->path().string().c_str());
                 files.push_back(std::string(dir_iter->path().string()));
+                if (verbose)
+                    std::cout << std::string(dir_iter->path().string());
                 continue;
             }
             
@@ -71,6 +76,8 @@ void dirwalk(const char * path_str,
                 // if (handle_directory(dir_iter->path().string().c_str()))
                 //    dirwalk(dir_iter->path().string().c_str(), handle_file, handle_directory);
                 directories.push_back(std::string(dir_iter->path().string()));
+                if (verbose)
+                    std::cout << std::string(dir_iter->path().string());
                 continue;
             }
         }
@@ -122,6 +129,8 @@ void handler::dirwalk(const char * path_str, bool ignore_sym_links)
             {
                 //handle_file(dir_iter->path().string().c_str());
                 files.push_back(std::string(dir_iter->path().string()));
+                if (verbose)
+                    std::cout << std::string(dir_iter->path().string()) << std::endl;
                 continue;
             }
             
@@ -130,6 +139,8 @@ void handler::dirwalk(const char * path_str, bool ignore_sym_links)
                 // if (handle_directory(dir_iter->path().string().c_str()))
                 //    dirwalk(dir_iter->path().string().c_str(), handle_file, handle_directory);
                 directories.push_back(std::string(dir_iter->path().string()));
+                if (verbose)
+                    std::cout << std::string(dir_iter->path().string()) << std::endl;
                 continue;
             }
         }

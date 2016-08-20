@@ -62,5 +62,6 @@ namespace audio_file_tags
     int handle_directory(const char * , AudioFileRecordStore&);
     int handle_file(const std::string&, AudioFileRecordStore& );
     int handle_directory(const std::string&, AudioFileRecordStore&);
+    extern bool verbose;
 }
 #endif
