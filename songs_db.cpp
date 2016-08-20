@@ -74,8 +74,11 @@ template<typename T> int Bsearch(T strings, int len, const char *target, int *ix
         }
     }
 
-    if ((cmp > 0) && ((ix_match + 1) < len))
-        ix_match++;        // at last comparison target > probe, so bump up
+    if (cmp > 0)
+    {
+        // at last comparison target > probe, so point to the next slot.
+        ix_match++;
+    }
     *ixtop = ix_match;
     return cmp==0;
 }
