@@ -1,3 +1,8 @@
+#
+# On debian derived platforms
+# apt-get install g++ libtag1-dev libboost-system-dev libboost-filesystem-dev libboost-serialization-dev 
+# For builds using -DPROFILER install libgoogle-perftools-dev
+#
 TARG_ARCH=$(shell uname -m)
 
 ifeq ($(TARG_ARCH),x86_64)
@@ -22,11 +27,14 @@ LIBS = -lboost_filesystem -lboost_system -lboost_serialization -ltag $(TARG_LIBS
 GD = Makefile
 CF = -std=c++11 -Wall -g $(TARG_CF)
 
-OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o $(OD)/tmain.o \
-	   $(OD)/audio_tags.o  $(OD)/tracks_db.o 
+OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o \
+	   $(OD)/audio_tags.o  $(OD)/tracks_db.o \
+	   $(OD)/tmain.o
 
-S_OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o $(OD)/s_main.o \
-	   $(OD)/audio_tags.o  $(OD)/songs_db.o $(OD)/sstring.o $(OD)/tracks_db.o
+S_OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o \
+  		 $(OD)/audio_tags.o  $(OD)/tracks_db.o \
+  		 $(OD)/songs_db.o $(OD)/sstring.o \
+		 $(OD)/s_main.o
 
 all: $(BIN)/rtags $(BIN)/s_rtags $(BIN)/exp
 
