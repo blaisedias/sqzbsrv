@@ -64,7 +64,6 @@ std::size_t oat_hash(const char * cs)
     return h;
 }
 
-//REGISTRY
 struct ccompare : public std::binary_function<const char*, const char *, bool>
 {
     bool operator()(const char *lhs, const char *rhs)
@@ -120,6 +119,7 @@ class rc_cstr
         unsigned id=0;
         char * chars;
         std::size_t hashv=0;
+        bool hashv_set = false;
         std::atomic<int> ref_count{0};
 
         friend class RegistryImpl;
@@ -136,7 +136,8 @@ class rc_cstr
             }
         }
 
-        rc_cstr(unsigned new_id, const char * const chars_in, std::size_t hashval=0):id(new_id),chars(new_chars(chars_in)),hashv(hashval)
+        rc_cstr(unsigned new_id, const char * const chars_in, std::size_t hashval=0):
+            id(new_id), chars(new_chars(chars_in)), hashv(hashval), hashv_set(hashval != 0)
         {
             if (debug_rc_cstr)
             {
@@ -197,12 +198,26 @@ class rc_cstr
 
         bool operator<(const rc_cstr &cmp_cchars) const
         {
+            // TODO: make this faster.
             return strcmp(chars, cmp_cchars.chars) < 0;
         }
 
         bool operator<(const rc_cstr *cmp_cchars) const
         {
+            // TODO: make this faster.
             return strcmp(chars, cmp_cchars->chars) < 0;
+        }
+
+        bool operator>(const rc_cstr &cmp_cchars) const
+        {
+            // TODO: make this faster.
+            return strcmp(chars, cmp_cchars.chars) > 0;
+        }
+
+        bool operator>(const rc_cstr *cmp_cchars) const
+        {
+            // TODO: make this faster.
+            return strcmp(chars, cmp_cchars->chars) > 0;
         }
 
         friend std::ostream& operator<< (std::ostream& os, const String& sstr);
@@ -210,8 +225,11 @@ class rc_cstr
 
         inline std::size_t hashvalue()
         {
-            if (hashv == 0)
+            if (!hashv_set)
+            {
                 hashv = std::hash<std::string>()(std::string(chars));
+                hashv_set = true;
+            }
             return hashv;
         }
 
@@ -286,13 +304,15 @@ std::ostream& operator<< (std::ostream& os, const rc_cstr& cs)
 // string id to rc_cstr instance map
 typedef std::unordered_map<unsigned, rc_cstr*> IDCCMAP;
 // null terminated char * to id map, char * is pointing to cchar instance chars member
-//typedef std::map<const char *, unsigned, ccompare> CCMAP;
 typedef std::unordered_map<const char *, unsigned, cc_hash, cc_equal_to > CCMAP;
 
 class RegistryImpl : public Registry
 {
     private:
         unsigned    currentID = 100;
+        // String and ID registry, consists of two hash tables,
+        // 1) ID to ref counted string object
+        // 2) C-string to ID
         IDCCMAP id_pcc;
         CCMAP cc_id;
         std::mutex mtx;
@@ -319,6 +339,7 @@ class RegistryImpl : public Registry
             }
         }
 
+        // If pruning is required it should be done before saving.
         void save(const char * filename)
         {
             std::ofstream ofs(filename);
@@ -326,14 +347,12 @@ class RegistryImpl : public Registry
             {
                 unsigned long cc_map_size = id_pcc.size();
                 std::vector<unsigned> v;
-
-                // "snapshot", lock, then record the ids we want to write out,
-                // at the same time bumping up the reference count, so that
-                // rc_cstr instances to ensure that the rc_cstr are kept alive till 
-                // they've been written out.
-                // pruning whilst saving will not prune all unused strings.
-                // thats okay, pruning should be done before saving.
-                // And ideally saving should be during steady state shutdown.
+                // Serialise a snapshot:
+                //  1) lock,
+                //  2) record the ids we want to write out,
+                //  3) increment the reference count for ids we want to write,
+                //      to ensure that rc_cstr instances are kept alive till
+                //      they've been written out.
                 {
                     std::lock_guard<std::mutex> lockg(mtx);
                     v.reserve(id_pcc.size());
@@ -442,6 +461,8 @@ class RegistryImpl : public Registry
             ++(id_pcc[id]->ref_count);
         }
 
+        // dereferencing at program shutdown is disorderly,
+        // and so this is more complicated :-(.
         inline void refdn(unsigned id)
         {
             IDCCMAP::iterator find = id_pcc.find(id);
@@ -653,6 +674,13 @@ bool String::operator<(const String& sstr) const
     rc_cstr *pcc = const_cast<rc_cstr *>(defaultRegister.getcc(id));
     rc_cstr *pcc_other = const_cast<rc_cstr *>(defaultRegister.getcc(sstr.id));
     return *pcc < *pcc_other;
+}
+
+bool String::operator>(const String& sstr) const
+{
+    rc_cstr *pcc = const_cast<rc_cstr *>(defaultRegister.getcc(id));
+    rc_cstr *pcc_other = const_cast<rc_cstr *>(defaultRegister.getcc(sstr.id));
+    return *pcc > *pcc_other;
 }
 
 bool String::operator<(const char *c_str) const
