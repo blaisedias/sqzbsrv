@@ -52,6 +52,7 @@ class String {
         bool operator==(const std::string& cpp_str) const;
         bool operator<(const String& sstr) const;
         bool operator<(const char *c_str) const;
+        bool operator>(const String& sstr) const;
 
         std::string std_str() const;
         const char* c_str() const;
@@ -62,9 +63,14 @@ class String {
 // String data database object interface.
 class Registry {
     public:
+        // load from a file, overwrites existing content
+        // TODO: merge
         virtual void load(const char * filename)=0;
+        // saves snapshot to file, can be called at any time.
         virtual void save(const char * filename)=0;
+        // removes unused strings, IDs are not currently recycled
         virtual void prune()=0;
+        // Debug helper function. TODO: give it a stream to dump to.
         virtual void dump()=0;
         virtual ~Registry() {};
 };
@@ -72,7 +78,7 @@ class Registry {
 // Currently only support for a single default string data database.
 Registry& getRegistry();
 
-} // sstring
+} // namespace sstring
 
 namespace std
 {
@@ -88,6 +94,6 @@ namespace std
             return  s.hash();
         }
     };
-}
+} // namespace std
 
 #endif
