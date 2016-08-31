@@ -38,7 +38,8 @@ vector<sstring::String> strings;
 
 int main(int argc, char *argv[])
 {
-    sstring::getRegistry().load("data/exp_cchars.dat");
+    sstring::getRegistry().load("data/exp_cchars.dat",
+                     sstring::getRegistry().getDefaultSerializationContext());
 if(cc_dump)
     sstring::getRegistry().dump();
     strings.reserve(100);
@@ -82,7 +83,8 @@ std::cout << "== II  " << std::endl;
 if(cc_dump)
     sstring::getRegistry().dump();
 
-        sstring::getRegistry().save("data/exp_cchars.dat");
+        sstring::getRegistry().save("data/exp_cchars.dat",
+                     sstring::getRegistry().getDefaultSerializationContext());
     }
 
     std::cout << "---------------" << std::endl;
@@ -111,7 +113,8 @@ std::cout << "== III  " << std::endl;
         {
             std::cout << strings[ix] << std::endl;
         }
-        sstring::getRegistry().save("data/exp_cchars.dat");
+        sstring::getRegistry().save("data/exp_cchars.dat",
+                     sstring::getRegistry().getDefaultSerializationContext());
         
         std::ofstream ofs("data/exp_sstrings.dat");
         if (ofs.is_open())
@@ -120,6 +123,7 @@ std::cout << "== III  " << std::endl;
         
             ar & strings;
         }
+        cout << "Sizeof std::string " << sizeof(std::string("")) << "\n";
         cout << "Sizeof sstring " << sizeof(strings[0]) << "\n";
     }
 //    strings.clear();

@@ -25,38 +25,52 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include <boost/archive/text_iarchive.hpp>
 
 namespace sstring {
+// serialization environment interface.
+class SerializationContext {
+    protected:
+        virtual ~SerializationContext(){};
+    public:
+        // returns if remapping of ids is required at deserialization time.
+        virtual bool is_remapped()=0;
+        // returns remapped id.
+        virtual unsigned remapped_id(unsigned id)=0;
+};
 
 // String data database object interface.
 class Registry {
     public:
         // load from a file, merges with existing content
-        virtual void load(const char * filename)
+        virtual void load(const char * filename, SerializationContext* psc)
         {
             std::ifstream ifs(filename);
             if (ifs.is_open())
-                load(ifs);
+                load(ifs, psc);
         }
         // load from a stream
-        virtual void load(std::istream&)=0;
+        virtual void load(std::istream&, SerializationContext *)=0;
+
         // saves snapshot to file, can be called at any time.
         // If pruning is required it should be done before saving.
-        virtual void save(const char * filename)
+        virtual void save(const char* filename, SerializationContext* psc)
         {
             std::ofstream ofs(filename);
             if (ofs.is_open())
-                save(ofs);
+                save(ofs, psc);
         }
         // saves snapshot to a stream, can be called at any time.
-        virtual void save(std::ostream&)=0;
+        virtual void save(std::ostream&, SerializationContext*)=0;
+
         // removes unused strings, IDs are not currently recycled
         virtual void prune()=0;
+
+        // serialization context, to support multiple
+        // serialization to and deserialization ops from removable storage.
+        virtual SerializationContext*  getSerializationContext()=0;
+        virtual SerializationContext*  getDefaultSerializationContext()=0;
+
         // Debug helper function. TODO: give it a stream to dump to.
         virtual void dump()=0;
 
-        // Merge support. After load IDs may be remapped due to collision
-        // use these methods at deserialization to convert previous id value.
-        virtual bool is_id_remapped()=0;
-        virtual unsigned remapped_id(unsigned)=0;
     protected:
         virtual ~Registry() {};
 };
@@ -83,6 +97,8 @@ class String {
         //CTORs
         String(const char * const chars);
         String(const std::string& strng);
+        String(const char * const chars, SerializationContext *psc);
+        String(const std::string& strng, SerializationContext *psc);
         String(const String &sstr);
         String(unsigned id=0);
         virtual ~String();
@@ -103,6 +119,9 @@ class String {
 
         //Hashing support
         std::size_t hash() const;
+
+        //
+        void setSerializationContext(SerializationContext *psc);
 };
 
 } // namespace sstring

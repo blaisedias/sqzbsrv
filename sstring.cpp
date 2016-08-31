@@ -118,6 +118,7 @@ static char* new_chars(const char * chars_in=NULL, char* prev_chars=NULL)
 class rc_cstr
 {
     private:
+        unsigned dom=0;
         unsigned id=0;
         char * chars;
         std::size_t hashv=0;
@@ -309,6 +310,40 @@ std::ostream& operator<< (std::ostream& os, const rc_cstr& cs)
     return os;
 }
 
+class Domain: public SerializationContext {
+    private:
+        unsigned mask;
+        Domain(unsigned mask)
+        {
+            this->mask = mask;
+        }
+
+        ~Domain()
+        {
+        }
+
+        std::unordered_map<unsigned, unsigned> id_remap;
+        friend class RegistryImpl;
+    public:
+        inline bool is_remapped()
+        {
+            return id_remap.size() != 0;
+        }
+
+        unsigned remapped_id(unsigned id_in)
+        {
+            unsigned id_out = id_in;
+            if (id_remap.size())
+            {
+                std::unordered_map<unsigned, unsigned>::iterator find =
+                    id_remap.find(id_in);
+                if (find != id_remap.end())
+                    id_out = find->second;
+            }
+            return id_out;
+        }
+};
+
 // string id to rc_cstr instance map
 typedef std::unordered_map<unsigned, rc_cstr*> IDCCMAP;
 // null terminated char * to id map, char * is pointing to cchar instance chars member
@@ -325,16 +360,71 @@ class RegistryImpl : public Registry
         IDCCMAP id_pcc;
         CCMAP cc_id;
         std::mutex mtx;
-        // for merge
-        std::unordered_map<unsigned, unsigned> id_remap;
+
+        std::mutex domain_factory_mutex; 
+        unsigned assigned_doms = 0;
+        std::unordered_map<class Domain*, class Domain*> known_domains;
+
+        Domain *domainFromSerialisationContext(SerializationContext* psc)
+        {
+            try
+            {
+                return known_domains.at(dynamic_cast <Domain*>(psc));
+            }
+            catch (...)
+            {
+                throw std::invalid_argument("Invalid serialization context type");
+            }
+        }
+
+        Domain* getDomain()
+        {
+            std::lock_guard<std::mutex> lockg(domain_factory_mutex);
+
+            unsigned mask = 0x1;
+            while(mask & (mask & assigned_doms))
+                mask <<= 1;
+
+            if(mask)
+            {
+                Domain* dom = new Domain(mask);
+                assigned_doms |= mask;
+                known_domains[dom] = dom;
+                return dom;
+            }
+            throw std::overflow_error("SerializationContext");
+        }
+
+        void freeDomain(Domain* dom)
+        {
+            std::lock_guard<std::mutex> lockg(domain_factory_mutex);
+
+            try
+            {
+                dom = known_domains.at(dom);
+            }
+            catch (...)
+            {
+                throw std::invalid_argument("Invalid serialization context type");
+            }
+
+            if (assigned_doms & dom->mask)
+            {
+                assigned_doms ^= dom->mask;
+                known_domains.erase(dom);
+                delete dom;
+            }
+        }
 
     public:
         ~RegistryImpl() {};
         RegistryImpl() {};
 
-        void load(std::istream& ifs)
+        Domain* defaultDomain = getDomain();
+
+        void load(std::istream& ifs, SerializationContext* psc)
         {
-            id_remap.clear();
+            Domain *domain = domainFromSerialisationContext(psc);
             {
                 unsigned ceilingID;
                 ifs >> ceilingID;
@@ -368,12 +458,13 @@ class RegistryImpl : public Registry
                         {
                             // String already exists.
                             rc_cstr *curr_pcc = id_pcc[find_ccid->second];
+                            curr_pcc->dom |= domain->mask;
                             if (pcc->id != curr_pcc->id)
                             {
                                 // domain id_map is unordered_map<unsigned, unsigned>
                                 // Domain id map is used by clients when deserializing,
                                 // to convert serialized id values to live values.
-                                id_remap[pcc->v_id()] = curr_pcc->v_id();
+                                domain->id_remap[pcc->v_id()] = curr_pcc->v_id();
                             }
 
                             delete(pcc);
@@ -391,9 +482,10 @@ class RegistryImpl : public Registry
                             // ID already in use
                             unsigned newid = currentID++;
                             pcc->id = newid;
-                            id_remap[pcc->v_id()] = newid;
+                            domain->id_remap[pcc->v_id()] = newid;
                         }
                     }
+                    pcc->dom |= domain->mask;
                     id_pcc[pcc->v_id()] = pcc;
                     cc_id[pcc->v_str()] = pcc->v_id();
                 }
@@ -401,8 +493,9 @@ class RegistryImpl : public Registry
         }
 
         // If pruning is required it should be done before saving.
-        void save(std::ostream& ofs)
+        void save(std::ostream& ofs, SerializationContext* psc)
         {
+            Domain *domain = domainFromSerialisationContext(psc);
             {
                 unsigned ceilingID = 0;            
 //                unsigned long cc_map_size = id_pcc.size();
@@ -419,6 +512,9 @@ class RegistryImpl : public Registry
                     for(IDCCMAP::iterator itr=id_pcc.begin();
                             itr != id_pcc.end(); ++itr)
                     {
+                        if ((itr->second->dom & domain->mask) == 0)
+                            continue;
+
                         v.push_back(itr->first);
                         refup(itr->first);
                         if(itr->second->v_id() > ceilingID)
@@ -556,24 +652,27 @@ class RegistryImpl : public Registry
             }
         }
 
-        inline bool is_id_remapped()
+        inline void setSerializationContext(unsigned id, SerializationContext* psc)
         {
-            return id_remap.size() != 0;
-        }
-
-        unsigned remapped_id(unsigned id_in)
-        {
-            unsigned id_out = id_in;
-            if (id_remap.size())
+            if (psc)
             {
-                std::unordered_map<unsigned, unsigned>::iterator find =
-                    id_remap.find(id_in);
-                if (find != id_remap.end())
-                    id_out = find->second;
+                //if(typeid(defaultDomain) == typeid(psc))
+                //    throw std::invalid_argument("Invalid serialization context type");
+                //id_pcc[id]->dom |= (dynamic_cast <Domain*>(psc))->mask;
+                id_pcc[id]->dom |= domainFromSerialisationContext(psc)->mask;
             }
-            return id_out;
         }
 
+        SerializationContext* getSerializationContext()
+        {
+            Domain *dom = getDomain();
+            return dynamic_cast<SerializationContext*>(dom);
+        }
+
+        inline SerializationContext* getDefaultSerializationContext()
+        {
+           return dynamic_cast<SerializationContext*>(defaultDomain);
+        }
 };
 
 static RegistryImpl defaultRegister;
@@ -603,9 +702,10 @@ static StaticInitializer static_init;
 
 //== String functions
 //
-String::String(const char * const chars): id(0)
+String::String(const char * const chars, SerializationContext *psc): id(0)
 {
     bind(defaultRegister.acquire_cchars(chars));
+    setSerializationContext(psc);
     if (debug_string)
     {
         const rc_cstr *pcc = defaultRegister.getcc(id);
@@ -614,15 +714,24 @@ String::String(const char * const chars): id(0)
     }
 }
 
-String::String(const std::string& strng): id(0)
+String::String(const char * const chars):String(chars, defaultRegister.defaultDomain)
+{
+}
+
+String::String(const std::string& strng, SerializationContext *psc): id(0)
 {
     bind(defaultRegister.acquire_cchars(strng.c_str()));
+    setSerializationContext(psc);
     if (debug_string)
     {
         const rc_cstr *pcc = defaultRegister.getcc(id);
         cout << this << " String(std::string) cs=" << pcc  << " ref_count=" << pcc->v_ref_count() << " id=" << id << ", " << pcc->v_id() <<  nl;
         cout << "   +++ " << pcc->v_str() <<  nl;
     }
+}
+
+String::String(const std::string& strng):String(strng, defaultRegister.defaultDomain)
+{
 }
 
 String::String(const String &sstr): id(0)
@@ -816,6 +925,11 @@ template <class Archive>
     if (debug_string)
         cout << this << " save(" << ")" << id << nl;
     ar & id;
+}
+
+void String::setSerializationContext(SerializationContext *psc)
+{
+    defaultRegister.setSerializationContext(id, psc);
 }
 
 // Module functions
