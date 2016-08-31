@@ -25,10 +25,7 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>
 
 namespace record_store {
-// Serialisation support functions, are externalised, so that they can be serialised as desired.
 // These functions must be defined in the file where the record store is instantiated.
-template <typename KeyType, typename RecordType> void fload(const char* location, std::unordered_map<KeyType, RecordType>&);
-template <typename KeyType, typename RecordType> void fsave(const char* location, const std::unordered_map<KeyType, RecordType>&);
 template <typename KeyType, typename RecordType> void ftest(const std::unordered_map<KeyType, RecordType>&);
 
 // template implementing the AudioFileRecordStore interface.
@@ -43,8 +40,8 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         std::unordered_map<KeyType, RecordType> records;
         // file records storage location
         std::string records_location;
-    protected:
         std::recursive_mutex   mutex;
+    protected:
     public:
         RecordStore():records_location("record_store.dat") {}
         RecordStore(std::string location):records_location(location) {}
@@ -52,16 +49,58 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         virtual ~RecordStore() {}
 
         //serialisation support
-        virtual void save()
+        void save() final
         {
             std::lock_guard<std::recursive_mutex> lock{mutex};
-            fsave(records_location.c_str(), records);
+            std::ofstream ofs(records_location.c_str());
+            serialise(ofs);
         }
 
-        virtual void load()
+        virtual void serialise(std::ostream& ofs) final
         {
             std::lock_guard<std::recursive_mutex> lock{mutex};
-            fload(records_location.c_str(), records);
+            serialise_records(ofs, records);
+        }
+
+        virtual void serialise_records(std::ostream& ofs, const std::unordered_map<KeyType, RecordType>& recs_out)
+        {
+            boost::archive::text_oarchive ar(ofs);
+            std::size_t num_records=recs_out.size();
+            ar << num_records;
+            for(typename std::unordered_map<KeyType, RecordType>::const_iterator itr=recs_out.begin();
+                    itr != recs_out.end(); ++itr)
+            {
+                ar << itr->first;
+                ar << itr->second;
+            }
+        }
+
+        void load() final
+        {
+            std::lock_guard<std::recursive_mutex> lock{mutex};
+            std::ifstream ifs(records_location.c_str());
+            deserialise(ifs);
+        }
+
+        virtual void deserialise(std::istream& ifs) final
+        {
+            std::lock_guard<std::recursive_mutex> lock{mutex};
+            deserialise_records(ifs, records);
+        }
+
+        virtual void deserialise_records(std::istream& ifs, std::unordered_map<KeyType, RecordType>& recs_in)
+        {
+            boost::archive::text_iarchive ar(ifs);
+            std::size_t num_records;
+            ar >> num_records;
+            while(num_records--)
+            {
+                KeyType key;
+                RecordType rec;
+                ar >> key;
+                ar >> rec;
+                recs_in.emplace(key,rec);
+            }
         }
 
         audio_file_tags::AudioFileRecord& get_record(const char *location)
@@ -116,7 +155,7 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
             }
         }
 
-        // debug helper function. FIXME: take an ostream for maximum flexibility.
+        // debug helper function. TODO: take an ostream for maximum flexibility.
         void dump_records()
         {
 #if 0

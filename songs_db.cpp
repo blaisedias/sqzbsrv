@@ -309,22 +309,23 @@ class songsRecordStore: public record_store::RecordStore<KeyType, RecordType>
                 fixed_strings_list.push_back(ts);
         }
 
-        void save()
+        void serialise_records(std::ostream& ofs, const std::unordered_map<KeyType, RecordType>& recs_out)
         {
-            std::lock_guard<std::recursive_mutex> lock{record_store::RecordStore<KeyType, RecordType>::mutex};
-            record_store::RecordStore<KeyType, RecordType>::save();
             sstring::getRegistry().prune();
-            sstring::getRegistry().save("data/songs_db_cchars.dat",
+            sstring::getRegistry().save(ofs,
                      sstring::getRegistry().getDefaultSerializationContext());
+            if (debug)
+                std::cerr << " cchars written" << std::endl;
+            record_store::RecordStore<KeyType, RecordType>::serialise_records(ofs, recs_out);
         }
 
-        void load()
+        void deserialise_records(std::istream& ifs, std::unordered_map<KeyType, RecordType>& recs_in)
         {
-            std::lock_guard<std::recursive_mutex> lock{record_store::RecordStore<KeyType, RecordType>::mutex};
-            sstring::getRegistry().load("data/songs_db_cchars.dat",
+            sstring::getRegistry().load(ifs,
                      sstring::getRegistry().getDefaultSerializationContext());
-            std::cerr << " cchars loaded" << std::endl;
-            record_store::RecordStore<KeyType, RecordType>::load();
+            if (debug)
+                std::cerr << " cchars loaded" << std::endl;
+            record_store::RecordStore<KeyType, RecordType>::deserialise_records(ifs, recs_in);
         }
 };
 
@@ -338,38 +339,6 @@ audio_file_tags::AudioFileRecordStore* new_record_store()
 } //namespace songs_db
 
 namespace record_store {
-template <typename KeyType, typename RecordType> void fsave(const char* filename, const std::unordered_map<KeyType, RecordType>& records)
-{
-    {
-        std::ofstream ofs(filename);
-        boost::archive::text_oarchive ar(ofs);
-        std::size_t num_records=records.size();
-        ar << num_records;
-        for(typename std::unordered_map<KeyType, RecordType>::const_iterator itr=records.begin();
-                itr != records.end(); ++itr)
-        {
-            ar << itr->first;
-            ar << itr->second;
-        }
-    }
-}
-
-template <typename KeyType, typename RecordType> void fload(const char* filename, std::unordered_map<KeyType, RecordType>& records)
-{
-        std::ifstream ifs(filename);
-        boost::archive::text_iarchive ar(ifs);
-        std::size_t num_records;
-        ar >> num_records;
-        while(num_records--)
-        {
-            KeyType key;
-            RecordType rec;
-            ar >> key;
-            ar >> rec;
-            records.emplace(key,rec);
-        }
-}
-
 template <typename KeyType> static void save_vec(const char *filename, std::vector<KeyType> svec)
 {
     std::sort(svec.begin(), svec.end());

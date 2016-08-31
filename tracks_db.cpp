@@ -227,39 +227,6 @@ audio_file_tags::AudioFileRecordStore* new_record_store()
 
 
 namespace record_store {
-template <typename KeyType, typename RecordType> void fsave(const char* filename, const std::unordered_map<KeyType, RecordType>& records)
-{
-    {
-        std::ofstream ofs(filename);
-        boost::archive::text_oarchive ar(ofs);
-        std::size_t num_records=records.size();
-        ar << num_records;
-        for(typename std::unordered_map<KeyType, RecordType>::const_iterator itr=records.begin();
-                itr != records.end(); ++itr)
-        {
-            ar << itr->first;
-            ar << itr->second;
-        }
-    }
-}
-
-template <typename KeyType, typename RecordType> void fload(const char* filename, std::unordered_map<KeyType, RecordType>& records)
-{
-        std::ifstream ifs(filename);
-        boost::archive::text_iarchive ar(ifs);
-        std::size_t num_records;
-        ar >> num_records;
-        while(num_records--)
-        {
-            KeyType key;
-            RecordType rec;
-            ar >> key;
-            ar >> rec;
-            records.emplace(key,rec);
-        }
-}
-
-
 template <typename KeyType, typename RecordType> void ftest(const std::unordered_map<KeyType, RecordType>& records)
 {
     std::vector<KeyType> artists;
