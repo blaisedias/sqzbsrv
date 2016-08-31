@@ -35,6 +35,8 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace sstring {
 
+const bool debug_ref_counts=false;
+const bool debug_prune=false;
 const bool debug_rc_cstr=false;
 const bool debug_registry=false;
 const bool debug_string=false;
@@ -124,8 +126,13 @@ class rc_cstr
 
         friend class RegistryImpl;
 
-        // Prevent trivial assignment.
-        rc_cstr& operator=(const rc_cstr&);
+        // Non copyable
+        rc_cstr& operator=(const rc_cstr&) = delete;
+        rc_cstr& operator=(rc_cstr&&) = delete;
+
+        //Non movable
+        rc_cstr(rc_cstr const&) = delete;
+        rc_cstr(rc_cstr&&) = delete;
     public:
         rc_cstr(const char * const chars_in=NULL):chars(new_chars(chars_in))
         {
@@ -274,18 +281,19 @@ class rc_cstr
         }
         BOOST_SERIALIZATION_SPLIT_MEMBER();
 #endif
-        void save(std::ofstream& ofs) const
+        void save(std::ostream& ofs) const
         {
             unsigned slen = strlen(chars);
-            ofs << id << " " << hashv << " " << slen << sep << chars << '\n';
+//            ofs << id << " " << hashv << " " << slen << sep << chars << '\n';
+            ofs << id << " " << " " << slen << sep << chars << '\n';
         }
 
-        void load(std::ifstream& ifs)
+        void load(std::istream& ifs)
         {
             char mysep;
             unsigned slen;
             ifs >> id;
-            ifs >> hashv;
+//            ifs >> hashv;
             ifs >> slen;
             ifs.get(mysep);
             chars = new char[slen + 1];
@@ -309,30 +317,83 @@ typedef std::unordered_map<const char *, unsigned, cc_hash, cc_equal_to > CCMAP;
 class RegistryImpl : public Registry
 {
     private:
-        unsigned    currentID = 100;
+        unsigned    initialID = 100;
+        std::atomic<unsigned> currentID{initialID};
         // String and ID registry, consists of two hash tables,
         // 1) ID to ref counted string object
         // 2) C-string to ID
         IDCCMAP id_pcc;
         CCMAP cc_id;
         std::mutex mtx;
+        // for merge
+        std::unordered_map<unsigned, unsigned> id_remap;
 
     public:
         ~RegistryImpl() {};
         RegistryImpl() {};
 
-        void load(const char * filename)
+        void load(std::istream& ifs)
         {
-            std::ifstream ifs(filename);
-            if (ifs.is_open())
+            id_remap.clear();
             {
-                ifs >> currentID;
+                unsigned ceilingID;
+                ifs >> ceilingID;
+                bool merge = !currentID.compare_exchange_strong(initialID, ceilingID);
                 unsigned long cc_map_size;
                 ifs >> cc_map_size;
+                if (merge)
+                {
+                    // ensure that currentID >= ceilingID.
+                    // This improves the prospects that IDs loaded during this
+                    // serialisation will be available for assignment.
+                    // We cannot just test if currentID < ceilingID and then
+                    // set ceilingID into currentID, we risk reducing the value
+                    // of currentID if it gets updated concurrently to a 
+                    // value > ceilingID between the test and the store.
+                    unsigned cid;
+                    while((cid = currentID.load()) < ceilingID)
+                    {
+                        currentID.compare_exchange_strong(cid, ceilingID);
+                    }
+                }
                 while(cc_map_size--)
                 {
                     rc_cstr *pcc = new rc_cstr();
                     pcc->load(ifs);
+                    if (merge)
+                    {
+                        // Merge:
+                        CCMAP::iterator find_ccid = cc_id.find(pcc->chars);
+                        if (find_ccid != cc_id.end())
+                        {
+                            // String already exists.
+                            rc_cstr *curr_pcc = id_pcc[find_ccid->second];
+                            if (pcc->id != curr_pcc->id)
+                            {
+                                // domain id_map is unordered_map<unsigned, unsigned>
+                                // Domain id map is used by clients when deserializing,
+                                // to convert serialized id values to live values.
+                                id_remap[pcc->v_id()] = curr_pcc->v_id();
+                            }
+
+                            delete(pcc);
+                            continue;
+                        }
+
+                        // @here, currentID must be greater than an loaded ID
+                        // since we've ensured that the its value is >= to the
+                        // ceilingID value associated with this serialisation
+                        // so if the ID value is in use, we have to map the
+                        // loaded ID to a newly reserved ID value.
+                        IDCCMAP::iterator find_idcc = id_pcc.find(pcc->id);
+                        if (find_idcc != id_pcc.end())
+                        {
+                            // ID already in use
+                            unsigned newid = currentID++;
+                            pcc->id = newid;
+                            id_remap[pcc->v_id()] = newid;
+                        }
+                    }
                     id_pcc[pcc->v_id()] = pcc;
                     cc_id[pcc->v_str()] = pcc->v_id();
                 }
@@ -340,12 +401,11 @@ class RegistryImpl : public Registry
         }
 
         // If pruning is required it should be done before saving.
-        void save(const char * filename)
+        void save(std::ostream& ofs)
         {
-            std::ofstream ofs(filename);
-            if (ofs.is_open())
             {
-                unsigned long cc_map_size = id_pcc.size();
+                unsigned ceilingID = 0;            
+//                unsigned long cc_map_size = id_pcc.size();
                 std::vector<unsigned> v;
                 // Serialise a snapshot:
                 //  1) lock,
@@ -361,12 +421,15 @@ class RegistryImpl : public Registry
                     {
                         v.push_back(itr->first);
                         refup(itr->first);
+                        if(itr->second->v_id() > ceilingID)
+                            ceilingID = itr->second->v_id();
                     }
                 }
                 std::sort(v.begin(), v.end());
+                ++ceilingID;
         
-                ofs << currentID << '\n';
-                ofs << cc_map_size << '\n';
+                ofs << ceilingID << '\n';
+                ofs << v.size() << '\n';
 
                 for(auto id: v)
                 {
@@ -385,11 +448,12 @@ class RegistryImpl : public Registry
                 const rc_cstr * pcchars = itr->second;
                 if ((pcchars != NULL) && (pcchars->v_ref_count() == 0))
                 {
-                    if (debug_rc_cstr)
-                        std::cerr << "Erasing  " << pcchars->v_id() << " "<< *pcchars << nl;
+                    if (debug_rc_cstr || debug_prune)
+                        std::cerr << "@prune: Erasing  " << pcchars->v_id() << " "<< *pcchars << nl;
                     to_delete.push(pcchars->v_id());
                 }
             }
+
 
             while(!to_delete.empty())
             {
@@ -458,6 +522,11 @@ class RegistryImpl : public Registry
 
         inline void refup(unsigned id)
         {
+            if (debug_ref_counts)
+            {
+                if(id_pcc[id]->ref_count == 0)
+                    std::cerr << "@refup for id=" << id << ", ref_count == 0," << id_pcc[id]->chars << std::endl;
+            }
             ++(id_pcc[id]->ref_count);
         }
 
@@ -475,12 +544,36 @@ class RegistryImpl : public Registry
                     return;
                 }
                 --(pcc->ref_count);
+                if (debug_ref_counts)
+                {
+                    if (pcc->ref_count == 0)
+                        std::cerr << "@refdn for id=" << id << ", ref_count == 0," << pcc->chars << std::endl;
+                }
             }
             else
             {
 //                std::cerr << "@refdn for absent id=" << id << std::endl;
             }
         }
+
+        inline bool is_id_remapped()
+        {
+            return id_remap.size() != 0;
+        }
+
+        unsigned remapped_id(unsigned id_in)
+        {
+            unsigned id_out = id_in;
+            if (id_remap.size())
+            {
+                std::unordered_map<unsigned, unsigned>::iterator find =
+                    id_remap.find(id_in);
+                if (find != id_remap.end())
+                    id_out = find->second;
+            }
+            return id_out;
+        }
+
 };
 
 static RegistryImpl defaultRegister;
@@ -556,6 +649,7 @@ String::String(unsigned new_id): id(0)
         if(defaultRegister.getcc_count(new_id)==0)
         {
             // bind to unknown string.
+            std::cerr << "sstring::String::String(unsigned id) " << id << "is not present in the registry" << std::endl;
             throw std::logic_error("sstring::String::String(unsigned id) id is not present in the registry");
         }
         id=new_id;
