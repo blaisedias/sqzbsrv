@@ -31,6 +31,8 @@ using namespace std;
 //g++ -c audio_file_tags.cpp -I /usr/include/taglib 
 namespace audio_file_tags {
 
+bool verbose = false;
+
 int handle_file(const char * filename, AudioFileRecordStore& record_store)
 {
 //    if (record_store.record_update_required(filename) == false)
@@ -45,7 +47,7 @@ int handle_file(const char * filename, AudioFileRecordStore& record_store)
     {
         AudioFileRecord &record = record_store.get_record(filename);
         record.update_start();
-if (false)
+if (verbose)
 {
         TagLib::Tag *tag = f.tag();
         std::cout << filename << endl;

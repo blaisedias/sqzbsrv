@@ -152,6 +152,14 @@ int main( int argc, char* argv[] )
               ix_argv++;
               continue;
           }
+          if (0 == strcmp(cmd, "verbose"))
+          {
+              fs_utils::verbose=true;
+              audio_file_tags::verbose=true;
+              std::cerr << fs_utils::verbose << std::endl;
+              std::cerr << audio_file_tags::verbose << std::endl;
+              continue;
+          }
           if (!is_command(cmd))
           {
               std::cerr << "Ignoring " << cmd << std::endl;
