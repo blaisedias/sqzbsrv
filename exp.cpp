@@ -38,6 +38,7 @@ vector<sstring::String> strings;
 
 int main(int argc, char *argv[])
 {
+    std::string stdaardvark("Aardvark");
     sstring::getRegistry().load("data/exp_cchars.dat",
                      sstring::getRegistry().getDefaultSerializationContext());
 if(cc_dump)
@@ -66,10 +67,10 @@ if(cc_dump)
 
     if (true)
     {
-std::cout << "== II  " << std::endl;
+std::cout << "== Phase II  " << std::endl;
         sstring::String zambia("Zambia");
         sstring::String aloha("Aloha");
-        sstring::String aardvark("Aardvark");
+        sstring::String aardvark(stdaardvark);
         sstring::String *namaste = new sstring::String("Namaste");
         sstring::String *zambia2 = new sstring::String("Zambia");
 
@@ -92,7 +93,7 @@ if(cc_dump)
     sstring::getRegistry().dump();
     if(true)
     {
-std::cout << "== III  " << std::endl;
+std::cout << "== Phase III  (" << strings.size() << ")" << std::endl;
         if (strings.size() < 20)
         {
             std::cout << "1" << std::endl;
@@ -100,21 +101,24 @@ std::cout << "== III  " << std::endl;
             std::cout << "2" << std::endl;
             strings.push_back(sstring::String("Aloha"));
             std::cout << "3" << std::endl;
-            strings.push_back(sstring::String("Aardvark"));
+            strings.push_back(stdaardvark);
             std::cout << "4" << std::endl;
             strings.push_back(sstring::String("Namaste"));
             std::cout << "5" << std::endl;
             strings.push_back(sstring::String("Zambia"));
             std::cout << "6" << std::endl;
-            strings.push_back(sstring::String("Zonda"));
+            strings.push_back("Zonda");
         }
 
+std::cout << "(" << strings.size() << ")" << std::endl;
         for(unsigned ix=0; ix < strings.size(); ix++)
         {
             std::cout << strings[ix] << std::endl;
         }
         sstring::getRegistry().save("data/exp_cchars.dat",
                      sstring::getRegistry().getDefaultSerializationContext());
+if(cc_dump)
+    sstring::getRegistry().dump();
         
         std::ofstream ofs("data/exp_sstrings.dat");
         if (ofs.is_open())
@@ -123,8 +127,8 @@ std::cout << "== III  " << std::endl;
         
             ar & strings;
         }
-        cout << "Sizeof std::string " << sizeof(std::string("")) << "\n";
         cout << "Sizeof sstring " << sizeof(strings[0]) << "\n";
+        cout << "Sizeof std::string " << sizeof(std::string("abcdef")) << "\n";
     }
 //    strings.clear();
     cout << "Fini" << "\n";
