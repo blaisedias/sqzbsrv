@@ -585,6 +585,12 @@ class RegistryImpl : public Registry
             std::cout << "===================" << nl;
         }
 
+        inline bool exists(const char* chars)
+        {
+            CCMAP::iterator find = cc_id.find(chars);
+            return find != cc_id.end();
+        }
+
         unsigned acquire_cchars(const char * chars)
         {
             CCMAP::iterator find = cc_id.find(chars);

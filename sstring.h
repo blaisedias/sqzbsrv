@@ -39,6 +39,8 @@ class SerializationContext {
 // String data database object interface.
 class Registry {
     public:
+        virtual bool exists(const char *)=0;
+
         // load from a file, merges with existing content
         virtual void load(const char * filename, SerializationContext* psc)
         {
