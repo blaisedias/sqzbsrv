@@ -69,7 +69,7 @@ void process_command(const char *cmd, audio_file_tags::AudioFileRecordStore& rec
     }
     if (0 == strcmp(cmd, "refresh"))
     {
-        record_store.refresh_records(audio_file_tags::handle_file);
+        record_store.refresh_records();
     }
     if (0 == strcmp(cmd, "test"))
     {

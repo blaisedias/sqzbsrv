@@ -90,7 +90,6 @@ class SongInfo : audio_file_tags::AudioFileRecord {
         bool complete;
         INFOMAP infomap;
         void init(const sstring::String& filename);
-
     public:
         SongInfo(){}
         SongInfo(const std::string& filename);
@@ -299,6 +298,11 @@ class songsRecordStore: public record_store::RecordStore<KeyType, RecordType>
 {
     private:
         std::vector<KeyType> fixed_strings_list;
+    protected:
+        virtual inline int cb_update(const KeyType& key)
+        {
+            return audio_file_tags::handle_file(key, *this); 
+        }
     public:
         songsRecordStore(const char *location): record_store::RecordStore<KeyType, RecordType>(location)
         {

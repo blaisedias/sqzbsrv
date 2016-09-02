@@ -42,6 +42,10 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         std::string records_location;
         std::recursive_mutex   mutex;
     protected:
+        virtual inline int cb_update(const KeyType& key)
+        {
+            return audio_file_tags::handle_file(key.c_str(), *this);
+        }
     public:
         RecordStore():records_location("record_store.dat") {}
         RecordStore(std::string location):records_location(location) {}
@@ -103,6 +107,16 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
             }
         }
 
+        inline audio_file_tags::AudioFileRecord& find_record(const char *location)
+        {
+            return records.find(location);
+        }
+
+        inline audio_file_tags::AudioFileRecord& record_end(void)
+        {
+            return records.end();
+        }
+
         audio_file_tags::AudioFileRecord& get_record(const char *location)
         {
             if (records.find(location) == records.end())
@@ -145,13 +159,12 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         }
 
         // Enumerate all records and refresh them by invoking the supplied function.
-        void refresh_records(int (*updatefn)(const char *, AudioFileRecordStore&))
+        void refresh_records()
         {
             for(typename std::unordered_map<KeyType, RecordType>::iterator itr=records.begin();
                     itr != records.end(); ++itr)
             {
-//                RecordType &ti = itr->second;
-                updatefn(itr->first.c_str(), *this);
+                cb_update(itr->first);
             }
         }
 

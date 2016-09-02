@@ -50,7 +50,7 @@ namespace audio_file_tags
             virtual void remove_record(const std::string &filename)=0;
             virtual void remove_record(const char *filename)=0;
 
-            virtual void refresh_records(int (*)(const char *filename, AudioFileRecordStore&))=0;
+            virtual void refresh_records()=0;
             virtual void save()=0;
             virtual void load()=0;
 
