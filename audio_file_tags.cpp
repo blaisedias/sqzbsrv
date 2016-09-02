@@ -35,14 +35,10 @@ bool verbose = false;
 
 int handle_file(const char * filename, AudioFileRecordStore& record_store)
 {
-//    if (record_store.record_update_required(filename) == false)
-//        return 1;
-
-    if (record_store.record_update_required(filename) == false)
-        return 0;
-
+    if(record_store.find_record(filename) == NULL
+            || record_store.record_update_required(filename))
+    {
     TagLib::FileRef f(filename);
-//    if (!f.isNull() && f.tag() && record_store.record_update_required(filename))
     if (!f.isNull() && f.tag())
     {
         AudioFileRecord &record = record_store.get_record(filename);
@@ -64,10 +60,8 @@ if (verbose)
 
         for(TagLib::PropertyMap::ConstIterator i = tags.begin(); i != tags.end(); ++i)
         {
-//            std::string skey(i->first.toCString(true));
             for(TagLib::StringList::ConstIterator j = i->second.begin(); j != i->second.end(); ++j) 
             {
-//                record.update(skey, j->toCString(true));
                 record.update(i->first.toCString(true), j->toCString(true));
             }
         }
@@ -82,6 +76,7 @@ if (verbose)
         record.update_complete();
         return 1;
     }
+}
     return 0;
 }
 

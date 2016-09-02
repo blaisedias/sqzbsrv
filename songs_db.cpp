@@ -331,6 +331,14 @@ class songsRecordStore: public record_store::RecordStore<KeyType, RecordType>
                 std::cerr << " cchars loaded" << std::endl;
             record_store::RecordStore<KeyType, RecordType>::deserialise_records(ifs, recs_in);
         }
+
+        inline const audio_file_tags::AudioFileRecord* const find_record(const char *location)
+        {
+            if (sstring::getRegistry().exists(location))
+                return record_store::RecordStore<KeyType, RecordType>::find_record(location);
+            return NULL;
+        }
+
 };
 
 //audio_file_tags::AudioFileRecordStore* new_record_store(const char *database_location, const char *string_defs_file)

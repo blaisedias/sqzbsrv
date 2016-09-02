@@ -107,9 +107,11 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
             }
         }
 
-        inline audio_file_tags::AudioFileRecord& find_record(const char *location)
+        inline const audio_file_tags::AudioFileRecord* const find_record(const char *location)
         {
-            return records.find(location);
+            if (records.find(location) != records.end())
+                return &((audio_file_tags::AudioFileRecord&)(records[location]));
+            return NULL;
         }
 
         inline audio_file_tags::AudioFileRecord& record_end(void)

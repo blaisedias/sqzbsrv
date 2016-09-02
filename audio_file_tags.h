@@ -41,6 +41,7 @@ namespace audio_file_tags
     {
         public:
             virtual ~AudioFileRecordStore(){};
+            virtual const AudioFileRecord* const find_record(const char *filename)=0;
             virtual AudioFileRecord& get_record(const char *filename)=0;
             virtual AudioFileRecord& get_record(const std::string &)=0;
 
