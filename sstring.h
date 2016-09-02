@@ -107,9 +107,16 @@ class String {
         bool operator==(const String& sstr) const;
         bool operator==(const char * c_str) const;
         bool operator==(const std::string& cpp_str) const;
-        bool operator<(const String& sstr) const;
+
         bool operator<(const char *c_str) const;
+        bool operator<(const String& sstr) const;
+
         bool operator>(const String& sstr) const;
+
+        //Conversions
+        inline operator unsigned() const { return id; }
+        inline operator unsigned*() const { return nullptr; }
+        inline operator const char*() const { return c_str(); }
 
         //Conversion functions
         std::string std_str() const;
