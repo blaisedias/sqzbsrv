@@ -1,0 +1,3 @@
+flac_locations=/media/seagate500GB/music/collection/flacs.cds
+mp3_locations=/media/seagate500GB/music/collection/mp3s.only
+media_locations="$flac_locations $mp3_locations"

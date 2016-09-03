@@ -6,9 +6,9 @@ mkdir -p data
 rm txt/*.txt >& /dev/null
 rm data/*.dat >& /dev/null
 
-echo "=tracks_db=s_rtags=create=rtags=load=test=dump==="
+echo "=tracks_db=rtags=create=rtags=load=test=dump==="
 echo ""
-time bin/s_rtags type tracks scan $media_locations save
+time bin/rtags type tracks scan $mp3_locations save
 time bin/rtags load test
 time bin/rtags load dump > txt/dump.txt
 
@@ -17,7 +17,7 @@ echo ""
 echo ""
 echo "=songs_db=s_rtags=create=load=test=dump========="
 echo ""
-time bin/s_rtags type songs scan $media_locations save
+time bin/s_rtags type songs scan $mp3_locations save
 time bin/s_rtags type songs load test
 time bin/s_rtags type songs load dump > txt/s_dump.txt
 
