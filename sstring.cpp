@@ -651,6 +651,12 @@ class RegistryImpl : public Registry
                     if (pcc->ref_count == 0)
                         std::cerr << "@refdn for id=" << id << ", ref_count == 0," << pcc->chars << std::endl;
                 }
+                if (pcc->ref_count == 0 && Registry::delete_immediately)
+                {
+                    cc_id.erase(pcc->chars);
+                    id_pcc.erase(pcc->id);
+                    delete pcc;
+                }
             }
             else
             {
@@ -669,7 +675,7 @@ class RegistryImpl : public Registry
             }
         }
 
-        SerializationContext* getSerializationContext()
+        SerializationContext* makeSerializationContext()
         {
             Domain *dom = getDomain();
             return dynamic_cast<SerializationContext*>(dom);
@@ -678,6 +684,16 @@ class RegistryImpl : public Registry
         inline SerializationContext* getDefaultSerializationContext()
         {
            return dynamic_cast<SerializationContext*>(defaultDomain);
+        }
+
+        void setDeleteImmediately(bool new_value)
+        {
+            if (new_value != Registry::delete_immediately)
+            {
+                Registry::delete_immediately = new_value;
+                if (delete_immediately)
+                    prune();
+            }
         }
 };
 

@@ -38,6 +38,8 @@ class SerializationContext {
 
 // String data database object interface.
 class Registry {
+    protected:
+        bool delete_immediately = true;
     public:
         virtual bool exists(const char *)=0;
 
@@ -67,11 +69,18 @@ class Registry {
 
         // serialization context, to support multiple
         // serialization to and deserialization ops from removable storage.
-        virtual SerializationContext*  getSerializationContext()=0;
+        virtual SerializationContext*  makeSerializationContext()=0;
         virtual SerializationContext*  getDefaultSerializationContext()=0;
 
         // Debug helper function. TODO: give it a stream to dump to.
         virtual void dump()=0;
+
+        // delete policy
+        virtual void setDeleteImmediately(bool)=0;
+        virtual bool getDeleteImmediately()
+        {
+            return delete_immediately;
+        }
 
     protected:
         virtual ~Registry() {};
