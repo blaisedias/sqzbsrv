@@ -40,16 +40,22 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         std::unordered_map<KeyType, RecordType> records;
         // file records storage location
         std::string records_location;
-        std::recursive_mutex   mutex;
+        std::recursive_mutex mutex;
     protected:
         virtual inline int cb_update(const KeyType& key)
         {
             return audio_file_tags::handle_file(key.c_str(), *this);
         }
+        std::string rootdir;
+        std::string datafile;
     public:
-        RecordStore():records_location("record_store.dat") {}
-        RecordStore(std::string location):records_location(location) {}
-        RecordStore(const char * location):records_location(location) {}
+        RecordStore(const char * location, const char* fname):rootdir(location),datafile(fname)
+        {
+            records_location.assign(rootdir);
+            records_location.append("/");
+            records_location.append(fname);
+        }
+
         virtual ~RecordStore() {}
 
         //serialisation support

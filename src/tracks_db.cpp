@@ -220,7 +220,7 @@ class TrackInfoImpl : audio_file_tags::AudioFileRecord {
 
 audio_file_tags::AudioFileRecordStore* new_record_store()
 {
-    return new record_store::RecordStore<std::string, TrackInfoImpl>("data/tracks_db.dat");
+    return new record_store::RecordStore<std::string, TrackInfoImpl>("./data", "tracks_db.dat");
 }
 
 } // namespace tracks_db

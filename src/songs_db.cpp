@@ -303,7 +303,7 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
             return audio_file_tags::handle_file(key, *this); 
         }
     public:
-        songsRecordStore(const char *location): record_store::RecordStore<sstring::String, SongInfo>(location)
+        songsRecordStore(const char *location, const char *fname): record_store::RecordStore<sstring::String, SongInfo>(location, fname)
         {
             std::vector <std::string> tag_strings;
             audio_tags::get_supported_taglist(tag_strings);
@@ -344,7 +344,7 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
 audio_file_tags::AudioFileRecordStore* new_record_store()
 {
 //    return new record_store::RecordStore<sstring::String, SongInfo>("data/songs_db.dat");
-    return new songsRecordStore("data/songs_db.dat");
+    return new songsRecordStore("./data", "songs_db.dat");
 }
 
 } //namespace songs_db
