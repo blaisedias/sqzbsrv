@@ -293,18 +293,17 @@ void SongInfo::dump()
 
 }
 
-template <typename KeyType, typename RecordType>
-class songsRecordStore: public record_store::RecordStore<KeyType, RecordType>
+class songsRecordStore: public record_store::RecordStore<sstring::String, SongInfo>
 {
     private:
-        std::vector<KeyType> fixed_strings_list;
+        std::vector<sstring::String> fixed_strings_list;
     protected:
-        virtual inline int cb_update(const KeyType& key)
+        virtual inline int cb_update(const sstring::String& key)
         {
             return audio_file_tags::handle_file(key, *this); 
         }
     public:
-        songsRecordStore(const char *location): record_store::RecordStore<KeyType, RecordType>(location)
+        songsRecordStore(const char *location): record_store::RecordStore<sstring::String, SongInfo>(location)
         {
             std::vector <std::string> tag_strings;
             audio_tags::get_supported_taglist(tag_strings);
@@ -313,29 +312,29 @@ class songsRecordStore: public record_store::RecordStore<KeyType, RecordType>
                 fixed_strings_list.push_back(ts);
         }
 
-        void serialise_records(std::ostream& ofs, const std::unordered_map<KeyType, RecordType>& recs_out)
+        void serialise_records(std::ostream& ofs, const std::unordered_map<sstring::String, SongInfo>& recs_out)
         {
             sstring::getRegistry().prune();
             sstring::getRegistry().save(ofs,
                      sstring::getRegistry().getDefaultSerializationContext());
             if (debug)
                 std::cerr << " cchars written" << std::endl;
-            record_store::RecordStore<KeyType, RecordType>::serialise_records(ofs, recs_out);
+            record_store::RecordStore<sstring::String, SongInfo>::serialise_records(ofs, recs_out);
         }
 
-        void deserialise_records(std::istream& ifs, std::unordered_map<KeyType, RecordType>& recs_in)
+        void deserialise_records(std::istream& ifs, std::unordered_map<sstring::String, SongInfo>& recs_in)
         {
             sstring::getRegistry().load(ifs,
                      sstring::getRegistry().getDefaultSerializationContext());
             if (debug)
                 std::cerr << " cchars loaded" << std::endl;
-            record_store::RecordStore<KeyType, RecordType>::deserialise_records(ifs, recs_in);
+            record_store::RecordStore<sstring::String, SongInfo>::deserialise_records(ifs, recs_in);
         }
 
         inline const audio_file_tags::AudioFileRecord* const find_record(const char *location)
         {
             if (sstring::getRegistry().exists(location))
-                return record_store::RecordStore<KeyType, RecordType>::find_record(location);
+                return record_store::RecordStore<sstring::String, SongInfo>::find_record(location);
             return NULL;
         }
 
@@ -345,7 +344,7 @@ class songsRecordStore: public record_store::RecordStore<KeyType, RecordType>
 audio_file_tags::AudioFileRecordStore* new_record_store()
 {
 //    return new record_store::RecordStore<sstring::String, SongInfo>("data/songs_db.dat");
-    return new songsRecordStore<sstring::String, SongInfo>("data/songs_db.dat");
+    return new songsRecordStore("data/songs_db.dat");
 }
 
 } //namespace songs_db
