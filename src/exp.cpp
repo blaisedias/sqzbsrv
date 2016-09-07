@@ -36,8 +36,13 @@ const bool cc_dump=false;
 
 vector<sstring::String> strings;
 
+void test(void);
+
 int main(int argc, char *argv[])
 {
+#if 0
+    test();
+#else
     std::string stdaardvark("Aardvark");
     sstring::getRegistry().load("data/exp_cchars.dat",
                      sstring::getRegistry().getDefaultSerializationContext());
@@ -132,6 +137,33 @@ if(cc_dump)
     }
 //    strings.clear();
     cout << "Fini" << "\n";
+#endif
 }
 
+#include <unordered_map>
+typedef std::unordered_multimap<sstring::String, sstring::String> INFOMAP;
+static INFOMAP infomap;
+typedef std::pair<sstring::String, sstring::String> INFOMAP_PAIR;
+typedef std::tuple<sstring::String, sstring::SerializationContext*> INFOMAP_TUP;
+static sstring::SerializationContext *sctxt;
+
+void test()
+{
+    sctxt = sstring::getRegistry().makeSerializationContext();
+    sstring::String s1("abc", sctxt);
+    std::cerr << s1 << "\n";
+    infomap.emplace(s1, "def");
+    infomap.emplace("ghi", "jkl");
+    sstring::String s2("mno", sctxt);
+    sstring::String s3("pqr", sctxt);
+    infomap.emplace(s2, s3);
+    infomap.insert(std::pair<sstring::String, sstring::String>("stu", "vwx"));
+    infomap.insert(std::pair<sstring::String, sstring::String>({"ABC", sctxt}, "DEF"));
+    infomap.insert(std::pair<sstring::String, sstring::String>({"GHI", sctxt}, {"JKL", sctxt}));
+    infomap.emplace(std::pair<sstring::String, sstring::String>({"MNO", sctxt}, {"PQR", sctxt}));
+    infomap.emplace(sstring::String("STU", sctxt), sstring::String("VWX", sctxt));
+
+    for (auto itr = infomap.begin(); itr != infomap.end(); ++itr)
+        std::cerr << itr->first << " ; " << itr->second << "\n";
+}
 

@@ -38,6 +38,7 @@ static bool debug=true;
 
 namespace songs_db {
 typedef std::unordered_multimap<sstring::String, sstring::String> INFOMAP;
+typedef std::pair<sstring::String, sstring::String> INFOMAP_PAIR;
 
 const char* const unknown="UNKNOWN";
 
@@ -83,6 +84,9 @@ template<typename T> int Bsearch(T strings, int len, const char *target, int *ix
     return cmp==0;
 }
 
+// construct a sstring::String in a serialized context
+#define SSSTRING(str)    sstring::String((str), serialization_context)
+
 class SongInfo : audio_file_tags::AudioFileRecord {
     private:
         uintmax_t file_length;
@@ -90,11 +94,14 @@ class SongInfo : audio_file_tags::AudioFileRecord {
         bool complete;
         INFOMAP infomap;
         void init(const sstring::String& filename);
+        sstring::SerializationContext *serialization_context;
     public:
         SongInfo(){}
-        SongInfo(const std::string& filename);
-        SongInfo(const sstring::String& filename);
-        SongInfo(const char* const filename);
+        SongInfo(const char* const filename, sstring::SerializationContext *sc)
+        {
+            serialization_context = sc;
+            init(sstring::String(filename, sc));
+        }
         ~SongInfo(){}
 
         template <class Archive>
@@ -150,26 +157,13 @@ class SongInfo : audio_file_tags::AudioFileRecord {
 
 void SongInfo::init(const sstring::String& filename)
 {
-    infomap.emplace(audio_tags::FILEPATH,filename);
-    infomap.emplace(audio_tags::DIRECTORY,boost::filesystem::path(filename.std_str()).parent_path().generic_string());
+//    infomap.insert(INFOMAP_PAIR(SSSTRING(audio_tags::FILEPATH),SSSTRING(filename));
+    infomap.emplace(SSSTRING(audio_tags::FILEPATH), SSSTRING(filename));
+    infomap.emplace(SSSTRING(audio_tags::DIRECTORY),
+            SSSTRING(boost::filesystem::path(filename.std_str()).parent_path().generic_string()));
     file_length = boost::filesystem::file_size(filename.std_str());
     file_timestamp = boost::filesystem::last_write_time(filename.std_str());
     complete = false;
-}
-
-SongInfo::SongInfo(const sstring::String& filename)
-{
-    init(filename);
-}
-
-SongInfo::SongInfo(const std::string& filename)
-{
-    init(filename);
-}
-
-SongInfo::SongInfo(const char* const filename)
-{
-    init(filename);
 }
 
 void SongInfo::update(const std::string tag, const std::string value)
@@ -184,7 +178,7 @@ void SongInfo::update(const std::string tag, const std::string value)
             duplicate = true;
     }
     if (!duplicate)
-        infomap.emplace(tag, value);
+        infomap.emplace(SSSTRING(tag), SSSTRING(value));
     complete = false;
 }
 
@@ -240,6 +234,7 @@ void SongInfo::update_start()
 void SongInfo::update_complete()
 {
     auto find = infomap.find(audio_tags::FILEPATH);
+    assert(find != infomap.end());
     std::string filepath = find->second.std_str();
     file_length = boost::filesystem::file_size(filepath);
     file_timestamp = boost::filesystem::last_write_time(filepath);
@@ -302,21 +297,23 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
         {
             return audio_file_tags::handle_file(key, *this); 
         }
+        sstring::SerializationContext* serialization_ctxt;
     public:
         songsRecordStore(const char *location, const char *fname): record_store::RecordStore<sstring::String, SongInfo>(location, fname)
         {
+            serialization_ctxt = sstring::getRegistry().makeSerializationContext();
             std::vector <std::string> tag_strings;
             audio_tags::get_supported_taglist(tag_strings);
             fixed_strings_list.push_back(unknown);
             for(auto ts : tag_strings)
-                fixed_strings_list.push_back(ts);
+                fixed_strings_list.emplace_back(sstring::String(ts, serialization_ctxt));
         }
 
         void serialise_records(std::ostream& ofs, const std::unordered_map<sstring::String, SongInfo>& recs_out)
         {
             sstring::getRegistry().prune();
             sstring::getRegistry().save(ofs,
-                     sstring::getRegistry().getDefaultSerializationContext());
+                    serialization_ctxt);
             if (debug)
                 std::cerr << " cchars written" << std::endl;
             record_store::RecordStore<sstring::String, SongInfo>::serialise_records(ofs, recs_out);
@@ -325,7 +322,7 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
         void deserialise_records(std::istream& ifs, std::unordered_map<sstring::String, SongInfo>& recs_in)
         {
             sstring::getRegistry().load(ifs,
-                     sstring::getRegistry().getDefaultSerializationContext());
+                    serialization_ctxt);
             if (debug)
                 std::cerr << " cchars loaded" << std::endl;
             record_store::RecordStore<sstring::String, SongInfo>::deserialise_records(ifs, recs_in);
@@ -338,12 +335,17 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
             return NULL;
         }
 
+        void new_record(const char *location)
+        {
+            records.emplace(
+                    sstring::String(location, serialization_ctxt),
+                    SongInfo(sstring::String(location, serialization_ctxt),
+                                serialization_ctxt));
+        }
 };
 
-//audio_file_tags::AudioFileRecordStore* new_record_store(const char *database_location, const char *string_defs_file)
 audio_file_tags::AudioFileRecordStore* new_record_store()
 {
-//    return new record_store::RecordStore<sstring::String, SongInfo>("data/songs_db.dat");
     return new songsRecordStore("./data", "songs_db.dat");
 }
 
