@@ -39,7 +39,7 @@ class SerializationContext {
 // String data database object interface.
 class Registry {
     protected:
-        bool delete_immediately = true;
+        bool delete_immediately = false;
     public:
         virtual bool exists(const char *)=0;
 

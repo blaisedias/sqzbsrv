@@ -218,15 +218,22 @@ class TrackInfoImpl : audio_file_tags::AudioFileRecord {
         }
 };
 
-//audio_file_tags::AudioFileRecordStore* new_record_store()
-//{
-//    return new record_store::RecordStore<std::string, TrackInfoImpl>("./data", "tracks_db.dat");
-//}
+class tracksRecordStore: public record_store::RecordStore<std::string, TrackInfoImpl>
+{
+    protected:
+        void new_record(const char *location)
+        {
+            records.emplace(location, TrackInfoImpl(location));
+        }
+    public:
+        tracksRecordStore(const char *location, const char *fname): record_store::RecordStore<std::string, TrackInfoImpl>(location, fname){}
+};
 
 audio_file_tags::AudioFileRecordStoreCollection* new_record_store_collection()
 {
-    return new record_store::RecordStoreCollection<record_store::RecordStore<std::string, TrackInfoImpl>>("tracks_db.dat"); 
+    return new record_store::RecordStoreCollection<tracksRecordStore>("tracks_db.dat"); 
 }
+
 
 } // namespace tracks_db
 

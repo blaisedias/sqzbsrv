@@ -36,7 +36,7 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 namespace sstring {
 
 const bool debug_ref_counts=false;
-const bool debug_prune=false;
+const bool debug_prune=true;
 const bool debug_rc_cstr=false;
 const bool debug_registry=false;
 const bool debug_string=false;
@@ -653,6 +653,8 @@ class RegistryImpl : public Registry
                 }
                 if (pcc->ref_count == 0 && Registry::delete_immediately)
                 {
+                    if (debug_rc_cstr || debug_prune)
+                        std::cerr << "@refdn: Erasing  " << pcc->v_id() << " "<< pcc->v_str() << nl;
                     cc_id.erase(pcc->chars);
                     id_pcc.erase(pcc->id);
                     delete pcc;
