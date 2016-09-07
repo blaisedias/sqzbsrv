@@ -297,6 +297,7 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
 {
     private:
         std::vector<sstring::String> fixed_strings_list;
+        sstring::SerializationContext *serialization_ctxt;
     protected:
         virtual inline int cb_update(const sstring::String& key)
         {
@@ -310,12 +311,14 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
             fixed_strings_list.push_back(unknown);
             for(auto ts : tag_strings)
                 fixed_strings_list.push_back(ts);
+            serialization_ctxt = sstring::getRegistry().makeSerializationContext();
         }
 
         void serialise_records(std::ostream& ofs, const std::unordered_map<sstring::String, SongInfo>& recs_out)
         {
             sstring::getRegistry().prune();
-            sstring::getRegistry().save(ofs,
+//             sstring::getRegistry().save(ofs, serialization_ctxt);
+           sstring::getRegistry().save(ofs,
                      sstring::getRegistry().getDefaultSerializationContext());
             if (debug)
                 std::cerr << " cchars written" << std::endl;
@@ -324,6 +327,7 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
 
         void deserialise_records(std::istream& ifs, std::unordered_map<sstring::String, SongInfo>& recs_in)
         {
+//            sstring::getRegistry().load(ifs, serialization_ctxt);
             sstring::getRegistry().load(ifs,
                      sstring::getRegistry().getDefaultSerializationContext());
             if (debug)
@@ -340,11 +344,14 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
 
 };
 
-//audio_file_tags::AudioFileRecordStore* new_record_store(const char *database_location, const char *string_defs_file)
-audio_file_tags::AudioFileRecordStore* new_record_store()
+//audio_file_tags::AudioFileRecordStore* new_record_store()
+//{
+//    return new songsRecordStore("./data", "songs_db.dat");
+//}
+
+audio_file_tags::AudioFileRecordStoreCollection* new_record_store_collection()
 {
-//    return new record_store::RecordStore<sstring::String, SongInfo>("data/songs_db.dat");
-    return new songsRecordStore("./data", "songs_db.dat");
+    return new record_store::RecordStoreCollection<songsRecordStore>("songs_db.dat"); 
 }
 
 } //namespace songs_db

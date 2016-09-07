@@ -64,5 +64,19 @@ namespace audio_file_tags
     int handle_file(const std::string&, AudioFileRecordStore& );
     int handle_directory(const std::string&, AudioFileRecordStore&);
     extern bool verbose;
+
+    class AudioFileRecordStoreCollection
+    {
+        public:
+            virtual ~AudioFileRecordStoreCollection(){};
+            virtual void load(const char* rootdir)=0;
+            virtual void scan(const char* rootdir)=0;
+            virtual void refresh_records()=0;
+
+            virtual void save()=0;
+
+            virtual void test()=0;
+            virtual void dump_records()=0;
+    };
 }
 #endif

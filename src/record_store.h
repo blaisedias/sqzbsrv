@@ -21,12 +21,98 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #define RECORD_STORE_H_INCLUDED
 
 #include <unordered_map>
-#include "audio_file_tags.h"
 #include <mutex>
+
+#include "audio_file_tags.h"
+#include "scanner.h"
 
 namespace record_store {
 // These functions must be defined in the file where the record store is instantiated.
 template <typename KeyType, typename RecordType> void ftest(const std::unordered_map<KeyType, RecordType>&);
+
+template <typename RecordStoreType>
+class RecordStoreCollection : public audio_file_tags::AudioFileRecordStoreCollection {
+    protected:
+        std::unordered_map<std::string, RecordStoreType*> stores;
+        std::string dbfilename;
+    public:
+        RecordStoreCollection(const char* f):dbfilename(f) {}
+        ~RecordStoreCollection()
+        {
+            for (auto itr=stores.begin(); itr != stores.end(); ++itr)
+            {
+                RecordStoreType* rec_store = itr->second;
+                delete rec_store;
+            }
+            stores.clear();
+        }
+
+        void save()
+        {
+            for (auto itr=stores.begin(); itr != stores.end(); ++itr)
+            {
+                RecordStoreType& rec_store = *itr->second;
+                rec_store.save();
+            }
+        }
+
+        void load(const char* rootdir)
+        {
+            if (stores.find(rootdir) == stores.end())
+            {
+                //stores.insert({std::string(rootdir), RecordStoreType(rootdir, dbfilename.c_str()}));
+                stores[rootdir] = new RecordStoreType(rootdir, dbfilename.c_str());
+            }
+
+            RecordStoreType& rec_store = *stores[rootdir];
+            rec_store.load();
+        }
+
+        void scan(const char* rootdir)
+        {
+            if (stores.find(rootdir) == stores.end())
+            {
+                //stores.insert({std::string(rootdir), RecordStoreType(rootdir, dbfilename.c_str()}));
+                stores[rootdir] = new RecordStoreType(rootdir, dbfilename.c_str());
+            }
+            RecordStoreType& rec_store = *stores[rootdir];
+            Scanner::Scanner scanner = Scanner::Scanner((audio_file_tags::AudioFileRecordStore&)rec_store);
+            scanner.scan(rootdir);
+        }
+
+        void refresh_records()
+        {
+            for (auto itr=stores.begin(); itr != stores.end(); ++itr)
+            {
+                RecordStoreType& rec_store = *itr->second;
+                rec_store.refresh_records();
+            }
+        }
+
+        void test()
+        {
+            //FIXME: this doesn't work correctly with collections,
+            //the output files are created and written to by the each
+            //record store, and we want a cumulative output file.
+            //Also the enumeration order has to match!
+            //So enumerate the keys, sort the keys and then output.
+            for (auto itr=stores.begin(); itr != stores.end(); ++itr)
+            {
+                RecordStoreType& rec_store = *itr->second;
+                rec_store.test();
+            }
+        }
+
+        void dump_records()
+        {
+            for (auto itr=stores.begin(); itr != stores.end(); ++itr)
+            {
+                RecordStoreType& rec_store = *itr->second;
+                rec_store.dump_records();
+            }
+        }
+};
+
 
 // template implementing the AudioFileRecordStore interface.
 // class KeyType must 1) implement function c_str() which returns null terminated const char * to the contents.
@@ -201,6 +287,8 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         // debug helper function.
         void test()
         {
+            //FIXME: this doesn't work correctly for record stores in
+            //collections.
             ftest(records);
         }
 };

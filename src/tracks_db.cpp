@@ -218,9 +218,14 @@ class TrackInfoImpl : audio_file_tags::AudioFileRecord {
         }
 };
 
-audio_file_tags::AudioFileRecordStore* new_record_store()
+//audio_file_tags::AudioFileRecordStore* new_record_store()
+//{
+//    return new record_store::RecordStore<std::string, TrackInfoImpl>("./data", "tracks_db.dat");
+//}
+
+audio_file_tags::AudioFileRecordStoreCollection* new_record_store_collection()
 {
-    return new record_store::RecordStore<std::string, TrackInfoImpl>("./data", "tracks_db.dat");
+    return new record_store::RecordStoreCollection<record_store::RecordStore<std::string, TrackInfoImpl>>("tracks_db.dat"); 
 }
 
 } // namespace tracks_db

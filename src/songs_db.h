@@ -23,7 +23,8 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include "audio_file_tags.h"
 
 namespace songs_db {
-    audio_file_tags::AudioFileRecordStore* new_record_store();
+    //audio_file_tags::AudioFileRecordStore* new_record_store();
+    audio_file_tags::AudioFileRecordStoreCollection* new_record_store_collection();
 }
 
 #endif

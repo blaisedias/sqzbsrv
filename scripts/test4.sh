@@ -9,8 +9,8 @@ rm data/*.dat >& /dev/null
 echo "=tracks_db=s_rtags=create=rtags=load=test=dump==="
 echo ""
 time bin/s_rtags type tracks scan $media_locations save
-time bin/rtags load test
-time bin/rtags load dump > txt/dump.txt
+time bin/rtags load $media_locations test
+time bin/rtags load $media_locations dump > txt/dump.txt
 
 echo ""
 echo ""
@@ -18,8 +18,8 @@ echo ""
 echo "=songs_db=s_rtags=create=load=test=dump========="
 echo ""
 time bin/s_rtags type songs scan $media_locations save
-time bin/s_rtags type songs load test
-time bin/s_rtags type songs load dump > txt/s_dump.txt
+time bin/s_rtags type songs load $media_locations test
+time bin/s_rtags type songs load $media_locations dump > txt/s_dump.txt
 
 diff txt/albums.txt  txt/s_albums.txt  
 diff txt/artists.txt  txt/s_artists.txt  

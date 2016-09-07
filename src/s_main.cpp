@@ -63,7 +63,7 @@ const char *commands [] = {
     "profile",
 };
 
-void process_command(const char *cmd, audio_file_tags::AudioFileRecordStore& record_store, std::vector<const char *> args)
+void process_command(const char *cmd, audio_file_tags::AudioFileRecordStoreCollection& record_store_collection, std::vector<const char *> args)
 {
     std::cout << "Command: " << cmd;
     for(unsigned ix=0; ix < args.size(); ix++)
@@ -73,9 +73,8 @@ void process_command(const char *cmd, audio_file_tags::AudioFileRecordStore& rec
     if (0 == strcmp(cmd, "scan"))
     {
         profile_start("scan.prof");
-        Scanner::Scanner scanner(record_store);
         for(unsigned ix=0; ix < args.size(); ix++)
-            scanner.scan(args[ix]);
+            record_store_collection.scan(args[ix]);
         profile_stop();
     }
     if (0 == strcmp(cmd, "load"))
@@ -83,31 +82,32 @@ void process_command(const char *cmd, audio_file_tags::AudioFileRecordStore& rec
         profile_start("load.prof");
         audio_tags::load();
         std::cerr << " audio_tags loaded" << std::endl;
-        record_store.load();
+        for(unsigned ix=0; ix < args.size(); ix++)
+            record_store_collection.load(args[ix]);
         std::cerr << " record_store loaded" << std::endl;
         profile_stop();
     }
     if (0 == strcmp(cmd, "save"))
     {
         profile_start("save.prof");
-        record_store.save();
+        record_store_collection.save();
         audio_tags::save();
         profile_stop();
     }
     if (0 == strcmp(cmd, "dump"))
     {
-        record_store.dump_records();
+        record_store_collection.dump_records();
     }
     if (0 == strcmp(cmd, "update"))
     {
     }
     if (0 == strcmp(cmd, "refresh"))
     {
-        record_store.refresh_records();
+        record_store_collection.refresh_records();
     }
     if (0 == strcmp(cmd, "test"))
     {
-        record_store.test();
+        record_store_collection.test();
     }
     if (0 == strcmp(cmd, "profile"))
     {
@@ -129,7 +129,7 @@ inline bool is_command(const char *str)
 int main( int argc, char* argv[] )
 {
   std::vector<const char *> args;
-  audio_file_tags::AudioFileRecordStore* record_store = 0;
+  audio_file_tags::AudioFileRecordStoreCollection* record_store_collection = 0;
 //  audio_file_tags::AudioFileRecordStore* record_store = tracks_db::new_record_store();
 //  audio_file_tags::AudioFileRecordStore* record_store = songs_db::new_record_store();
   if (argc > 1)
@@ -145,9 +145,9 @@ int main( int argc, char* argv[] )
               if (ix_argv < argc)
               {
                   if (0 == strcmp(argv[ix_argv], "tracks"))
-                      record_store = tracks_db::new_record_store();
+                      record_store_collection = tracks_db::new_record_store_collection();
                   if (0 == strcmp(argv[ix_argv], "songs"))
-                      record_store = songs_db::new_record_store();
+                      record_store_collection = songs_db::new_record_store_collection();
               }
               ix_argv++;
               continue;
@@ -173,12 +173,12 @@ int main( int argc, char* argv[] )
               ix_argv++;
           }
 
-          process_command(cmd, *record_store, args);
+          process_command(cmd, *record_store_collection, args);
       }
   }
   std::cout << "Finished commands. " << std::endl;
-  std::cout << "delete_record_store. " << std::endl;
-  delete record_store;
+  std::cout << "delete_record_store_collection. " << std::endl;
+  delete record_store_collection;
   std::cout << "Done. " << std::endl;
 }
 

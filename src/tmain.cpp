@@ -19,10 +19,9 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <iostream>
 #include <string.h>
-#include "scanner.h"
-#include "tracks_db.h"
 #include "audio_tags.h"
 #include "audio_file_tags.h"
+#include "tracks_db.h"
 #include <vector>
 
 const char *commands [] = {
@@ -37,7 +36,7 @@ const char *commands [] = {
     "test",
 };
 
-void process_command(const char *cmd, audio_file_tags::AudioFileRecordStore& record_store, std::vector<const char *> args)
+void process_command(const char *cmd, audio_file_tags::AudioFileRecordStoreCollection& record_store_collection, std::vector<const char *> args)
 {
     std::cout << "Command: " << cmd;
     for(unsigned ix=0; ix < args.size(); ix++)
@@ -46,34 +45,34 @@ void process_command(const char *cmd, audio_file_tags::AudioFileRecordStore& rec
 
     if (0 == strcmp(cmd, "scan"))
     {
-        Scanner::Scanner scanner(record_store);
         for(unsigned ix=0; ix < args.size(); ix++)
-            scanner.scan(args[ix]);
+            record_store_collection.scan(args[ix]);
     }
     if (0 == strcmp(cmd, "load"))
     {
         audio_tags::load();
-        record_store.load();
+        for(unsigned ix=0; ix < args.size(); ix++)
+            record_store_collection.load(args[ix]);
     }
     if (0 == strcmp(cmd, "save"))
     {
-        record_store.save();
+        record_store_collection.save();
         audio_tags::save();
     }
     if (0 == strcmp(cmd, "dump"))
     {
-        record_store.dump_records();
+        record_store_collection.dump_records();
     }
     if (0 == strcmp(cmd, "update"))
     {
     }
     if (0 == strcmp(cmd, "refresh"))
     {
-        record_store.refresh_records();
+        record_store_collection.refresh_records();
     }
     if (0 == strcmp(cmd, "test"))
     {
-        record_store.test();
+        record_store_collection.test();
     }
 }
 
@@ -90,7 +89,7 @@ inline bool is_command(const char *str)
 int main( int argc, char* argv[] )
 {
   std::vector<const char *> args;
-  audio_file_tags::AudioFileRecordStore* record_store = tracks_db::new_record_store();
+  audio_file_tags::AudioFileRecordStoreCollection* record_store_collection = tracks_db::new_record_store_collection();
   if (argc > 1)
   {
       int ix_argv = 1;
@@ -112,10 +111,10 @@ int main( int argc, char* argv[] )
               ix_argv++;
           }
 
-          process_command(cmd, *record_store, args);
+          process_command(cmd, *record_store_collection, args);
       }
   }
-  delete record_store;
+  delete record_store_collection;
 }
 
 
