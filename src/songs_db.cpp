@@ -84,23 +84,39 @@ template<typename T> int Bsearch(T strings, int len, const char *target, int *ix
     return cmp==0;
 }
 
+class Context
+{
+    public:
+        virtual uintmax_t file_size(const char*)=0;
+        virtual time_t file_timestamp(const char*)=0;
+        virtual sstring::SerializationContext *serialization_context()=0;
+};
+
 // construct a sstring::String in a serialized context
-#define SSSTRING(str)    sstring::String((str), serialization_context)
+#define SSSTRING(str)    sstring::String((str), ctxt->serialization_context())
 
 class SongInfo : audio_file_tags::AudioFileRecord {
     private:
         uintmax_t file_length;
         time_t file_timestamp;
         bool complete;
+
         INFOMAP infomap;
         void init(const sstring::String& filename);
-        sstring::SerializationContext *serialization_context;
+
+        // Meh. allow container class access to my private parts!
+        // so that the context pointer can be setup.
+        friend class songsRecordStore;
+        Context* ctxt;
     public:
-        SongInfo(){}
-        SongInfo(const char* const filename, sstring::SerializationContext *sc)
+        SongInfo()
         {
-            serialization_context = sc;
-            init(sstring::String(filename, sc));
+            ctxt = NULL;
+        }
+        SongInfo(const char* const filename, Context* pcontext)
+        {
+            ctxt = pcontext;
+            init(SSSTRING(filename));
         }
         ~SongInfo(){}
 
@@ -146,9 +162,9 @@ class SongInfo : audio_file_tags::AudioFileRecord {
         bool update_required();
         void dump();
 
-        sstring::String get(sstring::String tag)
+        const sstring::String get(sstring::String tag) const
         {
-            INFOMAP::iterator find = infomap.find(tag);
+            INFOMAP::const_iterator find = infomap.find(tag);
             if (find == infomap.end())
                 return unknown;
             return find->second;
@@ -159,10 +175,9 @@ void SongInfo::init(const sstring::String& filename)
 {
 //    infomap.insert(INFOMAP_PAIR(SSSTRING(audio_tags::FILEPATH),SSSTRING(filename));
     infomap.emplace(SSSTRING(audio_tags::FILEPATH), SSSTRING(filename));
-    infomap.emplace(SSSTRING(audio_tags::DIRECTORY),
-            SSSTRING(boost::filesystem::path(filename.std_str()).parent_path().generic_string()));
-    file_length = boost::filesystem::file_size(filename.std_str());
-    file_timestamp = boost::filesystem::last_write_time(filename.std_str());
+    assert(ctxt != NULL);
+    file_length = ctxt->file_size(filename);
+    file_timestamp = ctxt->file_timestamp(filename);
     complete = false;
 }
 
@@ -235,9 +250,9 @@ void SongInfo::update_complete()
 {
     auto find = infomap.find(audio_tags::FILEPATH);
     assert(find != infomap.end());
-    std::string filepath = find->second.std_str();
-    file_length = boost::filesystem::file_size(filepath);
-    file_timestamp = boost::filesystem::last_write_time(filepath);
+    assert(ctxt != NULL);
+    file_length = ctxt->file_size(find->second);
+    file_timestamp = ctxt->file_timestamp(find->second);
     complete = true;
 }
 
@@ -246,9 +261,9 @@ bool SongInfo::update_required()
     if (complete)
     {
         auto find = infomap.find(audio_tags::FILEPATH);
-        std::string filepath = find->second.std_str();
-        return file_timestamp != boost::filesystem::last_write_time(filepath)
-            || file_length != boost::filesystem::file_size(filepath);
+        assert(ctxt != NULL);
+        return file_timestamp != ctxt->file_timestamp(find->second)
+            || file_length != ctxt->file_size(find->second);
     }
     return true;
 }
@@ -288,7 +303,7 @@ void SongInfo::dump()
 
 }
 
-class songsRecordStore: public record_store::RecordStore<sstring::String, SongInfo>
+class songsRecordStore: public record_store::RecordStore<sstring::String, SongInfo>, public Context
 {
     private:
         std::vector<sstring::String> fixed_strings_list;
@@ -296,7 +311,7 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
     protected:
         virtual inline int cb_update(const sstring::String& key)
         {
-            return audio_file_tags::handle_file(key, *this); 
+            return audio_file_tags::handle_file(rootdir.c_str(), key, *this); 
         }
     public:
         songsRecordStore(const char *location, const char *fname): record_store::RecordStore<sstring::String, SongInfo>(location, fname)
@@ -324,6 +339,11 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
             if (debug)
                 std::cerr << " cchars loaded" << std::endl;
             record_store::RecordStore<sstring::String, SongInfo>::deserialise_records(ifs, recs_in);
+            for (auto itr=recs_in.begin(); itr != recs_in.end(); ++itr)
+            {
+                assert(itr->second.ctxt == NULL);
+                itr->second.ctxt = this;
+            }
         }
 
         inline const audio_file_tags::AudioFileRecord* const find_record(const char *location)
@@ -338,7 +358,30 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
             records.emplace(
                     sstring::String(location, serialization_ctxt),
                     SongInfo(sstring::String(location, serialization_ctxt),
-                                serialization_ctxt));
+                                this));
+        }
+
+        uintmax_t file_size(const char* f)
+        {
+            std::string filename(rootdir);
+            //FIXME: 
+            filename.append("/");
+            filename.append(f);
+            return boost::filesystem::file_size(filename);
+        }
+
+        time_t file_timestamp(const char* f)
+        {
+            std::string filename(rootdir);
+            //FIXME: 
+            filename.append("/");
+            filename.append(f);
+            return boost::filesystem::last_write_time(filename);
+        }
+
+        inline sstring::SerializationContext *serialization_context()
+        {
+            return serialization_ctxt;
         }
 };
 
@@ -378,7 +421,7 @@ template <typename KeyType, typename RecordType> void ftest(const std::unordered
     for(typename std::unordered_map<KeyType, RecordType>::const_iterator itr=records.begin();
             itr != records.end(); ++itr)
     {
-        RecordType& tii = const_cast<RecordType&>(itr->second);
+        const RecordType& tii = itr->second;
         artists.push_back(tii.get(artist_tag));
         albums.push_back(tii.get(album_tag));
         titles.push_back(tii.get(title_tag));

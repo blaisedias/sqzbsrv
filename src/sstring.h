@@ -27,7 +27,16 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 namespace sstring {
 // serialization environment interface.
 class SerializationContext {
+    private:
+        // Non copyable
+        SerializationContext& operator=(const SerializationContext&) = delete;
+        SerializationContext& operator=(SerializationContext&&) = delete;
+
+        //Non movable
+        SerializationContext(SerializationContext const&) = delete;
+        SerializationContext(SerializationContext&&) = delete;
     protected:
+        SerializationContext(){};
         virtual ~SerializationContext(){};
     public:
         // returns if remapping of ids is required at deserialization time.

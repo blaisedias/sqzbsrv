@@ -21,6 +21,7 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include <fileref.h>
 #include <tag.h>
 #include <tpropertymap.h>
+#include <string.h>
 
 #include "audio_file_tags.h"
 #include "audio_tags.h"
@@ -33,20 +34,36 @@ namespace audio_file_tags {
 
 bool verbose = false;
 
-int handle_file(const char * filename, AudioFileRecordStore& record_store)
+int handle_file(const char* root, const char* cfilename, AudioFileRecordStore& record_store)
 {
-    if(record_store.find_record(filename) == NULL
-            || record_store.record_update_required(filename))
+    size_t rootlen = strlen(root);
+    const char* relfilename = cfilename;
+    std::string sfilename(cfilename);
+
+    if (rootlen < strlen(cfilename))
     {
-    TagLib::FileRef f(filename);
+        if (strncmp(root, cfilename, rootlen) == 0)
+        {
+            relfilename = cfilename + rootlen;
+            sfilename.assign(root);
+            sfilename.append(relfilename);
+        }
+    }
+    else
+        root = NULL;
+
+    if(record_store.find_record(relfilename) == NULL
+            || record_store.record_update_required(relfilename))
+    {
+    TagLib::FileRef f(sfilename.c_str());
     if (!f.isNull() && f.tag())
     {
-        AudioFileRecord &record = record_store.get_record(filename);
+        AudioFileRecord &record = record_store.get_record(relfilename);
         record.update_start();
 if (verbose)
 {
         TagLib::Tag *tag = f.tag();
-        std::cout << filename << endl;
+        std::cout << relfilename << endl;
         std::cout << "-- TAG (basic) --" << endl;
         std::cout << "title   - \"" << tag->title()   << "\"" << endl;
         std::cout << "artist  - \"" << tag->artist()  << "\"" << endl;
@@ -80,19 +97,19 @@ if (verbose)
     return 0;
 }
 
-int handle_file(const std::string& filename, AudioFileRecordStore& record_store)
+int handle_file(const std::string& root, const std::string& filename, AudioFileRecordStore& record_store)
 {
-    return handle_file(filename.c_str(), record_store);
+    return handle_file(root.c_str(), filename.c_str(), record_store);
 }
 
-int handle_directory(const char * dirname, AudioFileRecordStore& record_store)
+int handle_directory(const char* root, const char * dirname, AudioFileRecordStore& record_store)
 {
     return 1;
 }
 
-int handle_directory(const std::string& directory, AudioFileRecordStore& record_store)
+int handle_directory(const std::string& root, const std::string& directory, AudioFileRecordStore& record_store)
 {
-    return handle_directory(directory.c_str(), record_store);
+    return handle_directory(root.c_str(), directory.c_str(), record_store);
 }
 
 } //namespace

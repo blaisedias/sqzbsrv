@@ -24,11 +24,13 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include "audio_tags.h"
 namespace audio_tags
 {
+    // file tags
     const char * FILEPATH = "FILEPATH";
     const char * DIRECTORY = "DIRECTORY";
     const char * FILELENGTH = "FILELENGTH";
     const char * FILETIMESTAMP = "FILETIMESTAMP";
 
+    // audio tags
     const char * BITRATE = "BITRATE";
     const char * LENGTH = "LENGTH";
     const char * SAMPLERATE = "SAMPLERATE";
@@ -63,10 +65,13 @@ class StaticInitializer {
         {
             const char * const ctags[] = 
             {
+                // file tags
                 audio_tags::FILEPATH,
                 audio_tags::DIRECTORY,
                 audio_tags::FILELENGTH,
                 audio_tags::FILETIMESTAMP,
+
+                // audio tags
                 audio_tags::BITRATE,
                 audio_tags::LENGTH,
                 audio_tags::SAMPLERATE,

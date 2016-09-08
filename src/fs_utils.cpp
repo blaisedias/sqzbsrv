@@ -35,6 +35,7 @@ namespace fs_utils {
 
 bool verbose = false;    
 
+#if 0
 void dirwalk(const char * path_str,
         int (*handle_file)(const char *),
         int (*handle_directory)(const char *),
@@ -99,6 +100,7 @@ void dirwalk(const char * path_str,
             dirwalk(directories[indx].c_str(), handle_file, handle_directory);
     }
 }
+#endif
 
 
 void handler::dirwalk(const char * path_str, bool ignore_sym_links)

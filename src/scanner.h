@@ -27,6 +27,7 @@ namespace Scanner {
 class Scanner : public fs_utils::handler {
     private:
         audio_file_tags::AudioFileRecordStore& record_store; //share_ptr?
+        std::string rootdir;
     public:
         Scanner(audio_file_tags::AudioFileRecordStore&);
         int handle_file(const char *filename);

@@ -21,10 +21,10 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #define FS_UTILS_H_INCLUDED
 namespace fs_utils
 {
-  void dirwalk(const char *,
-            int (*)(const char * ),
-            int (*)(const char * ),
-            bool ignore_symlinks=true);
+//  void dirwalk(const char *,
+//            int (*)(const char * ),
+//            int (*)(const char * ),
+//            bool ignore_symlinks=true);
 
   class handler {
       public:

@@ -53,25 +53,40 @@ static void save_vec(const char *filename, std::vector<std::string> svec)
     }
 }
 
+class Context
+{
+    public:
+        virtual uintmax_t file_size(const std::string&)=0;
+        virtual time_t file_timestamp(const std::string&)=0;
+};
+
 const static std::string unknown ="UNKNOWN";
 class TrackInfoImpl : audio_file_tags::AudioFileRecord {
     private:
-        std::map<int, std::string> infomap;
         uintmax_t file_length;
         time_t file_timestamp;
         bool complete;
+
+        std::map<int, std::string> infomap;
+
+        // Meh. allow container class access to my private parts!
+        // so that the context pointer can be setup.
+        friend class tracksRecordStore;
+        Context *ctxt;
 
     public:
         TrackInfoImpl(){
 #ifdef  DEBUG           
            std::cout << " TrackInfoImpl " << this << " " << &infomap << std::endl;
 #endif
+           ctxt = NULL;
         }
 
-        TrackInfoImpl(const std::string& filename){
+        TrackInfoImpl(const std::string& filename, Context *pcontext){
 #ifdef  DEBUG           
            std::cout << " TrackInfoImpl " << this << " " << &infomap << std::endl;
 #endif
+           ctxt = pcontext;
            init(filename);
         }
 
@@ -139,23 +154,25 @@ class TrackInfoImpl : audio_file_tags::AudioFileRecord {
         void init(const std::string &filename)
         {
             update(std::string("FILEPATH"), filename);
-            update(std::string("DIRECTORY"), boost::filesystem::path(filename).parent_path().generic_string());
-            file_length = boost::filesystem::file_size(filename);
-            file_timestamp = boost::filesystem::last_write_time(filename);
+            assert(ctxt != NULL);
+            file_length = ctxt->file_size(filename);
+            file_timestamp = ctxt->file_timestamp(filename);
             complete = false;
         }
 
         bool update_required()
         {
+            assert(ctxt != NULL);
             return (complete != true)
-                || file_timestamp != boost::filesystem::last_write_time(infomap[0])
-                || file_length != boost::filesystem::file_size(infomap[0]);
+                || file_timestamp != ctxt->file_timestamp(infomap[0])
+                || file_length != ctxt->file_size(infomap[0]);
         }
 
         void update_complete()
         {
-            file_length = boost::filesystem::file_size(infomap[0]);
-            file_timestamp = boost::filesystem::last_write_time(infomap[0]);
+            assert(ctxt != NULL);
+            file_length = ctxt->file_size(infomap[0]);
+            file_timestamp = ctxt->file_timestamp(infomap[0]);
             complete = true;
         }
 
@@ -163,20 +180,19 @@ class TrackInfoImpl : audio_file_tags::AudioFileRecord {
         {
             complete = false;
             int ix_fp_tag = audio_tags::index_of_supported(std::string(audio_tags::FILEPATH));
-            int ix_dir_tag = audio_tags::index_of_supported(std::string(audio_tags::DIRECTORY));
 
             for(std::map<int, std::string>::iterator itr=infomap.begin();
                 itr != infomap.end(); ++itr)
             {
-                if ((itr->first == ix_fp_tag) || (itr->first == ix_dir_tag))
+                if ((itr->first == ix_fp_tag))
                     continue;
                 infomap.erase(itr->first);
             }
         }
 
-        const std::string& get(int ix_tag)
+        const std::string& get(int ix_tag) const
         {
-            std::map<int, std::string>::iterator find = infomap.find(ix_tag);
+            std::map<int, std::string>::const_iterator find = infomap.find(ix_tag);
             if (find == infomap.end())
                 return unknown;
             return find->second;
@@ -218,15 +234,44 @@ class TrackInfoImpl : audio_file_tags::AudioFileRecord {
         }
 };
 
-class tracksRecordStore: public record_store::RecordStore<std::string, TrackInfoImpl>
+class tracksRecordStore: public record_store::RecordStore<std::string, TrackInfoImpl>, public Context
 {
     protected:
         void new_record(const char *location)
         {
-            records.emplace(location, TrackInfoImpl(location));
+            records.emplace(location, TrackInfoImpl(location, this));
         }
     public:
         tracksRecordStore(const char *location, const char *fname): record_store::RecordStore<std::string, TrackInfoImpl>(location, fname){}
+
+        void deserialise_records(std::istream& ifs, std::unordered_map<std::string, TrackInfoImpl>& recs_in)
+        {
+            record_store::RecordStore<std::string, TrackInfoImpl>::deserialise_records(ifs, recs_in);
+            for (auto itr=recs_in.begin(); itr != recs_in.end(); ++itr)
+            {
+                assert(itr->second.ctxt == NULL);
+                itr->second.ctxt = this;
+            }
+        }
+
+        uintmax_t file_size(const std::string& f)
+        {
+            std::string filename(rootdir);
+            //FIXME: 
+            filename.append("/");
+            filename.append(f);
+            return boost::filesystem::file_size(filename);
+        }
+
+        time_t file_timestamp(const std::string& f)
+        {
+            std::string filename(rootdir);
+            //FIXME: 
+            filename.append("/");
+            filename.append(f);
+            return boost::filesystem::last_write_time(filename);
+        }
+
 };
 
 audio_file_tags::AudioFileRecordStoreCollection* new_record_store_collection()
@@ -253,12 +298,7 @@ template <typename KeyType, typename RecordType> void ftest(const std::unordered
     for(typename std::unordered_map<KeyType, RecordType>::const_iterator itr=records.begin();
             itr != records.end(); ++itr)
     {
-        // FIXME: Naughty casting away constness
-        // cause I don't know how to fix this correctly (yet) given that we have const records.
-        // Making get a const method fails compilation with
-        // error: passing ‘const std::map<int, std::basic_string<char> >’ as ‘this’ argument of ‘std::map<_Key, _Tp, _Compare, _Alloc>::mapped_type& std::map<_Key, _Tp, _Compare, _Alloc>::operator[](const key_type&) [with _Key = int; _Tp = std::basic_string<char>; _Compare = std::less<int>; _Alloc = std::allocator<std::pair<const int, std::basic_string<char> > >; std::map<_Key, _Tp, _Compare, _Alloc>::mapped_type = std::basic_string<char>; std::map<_Key, _Tp, _Compare, _Alloc>::key_type = int]’ discards qualifiers [-fpermissive]
-        // return infomap[ix_tag];
-        RecordType& tii = const_cast<RecordType&>(itr->second);
+        const RecordType& tii = (itr->second);
         artists.push_back(tii.get(ix_artist));
         albums.push_back(tii.get(ix_album));
         titles.push_back(tii.get(ix_title));

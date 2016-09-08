@@ -312,6 +312,14 @@ std::ostream& operator<< (std::ostream& os, const rc_cstr& cs)
 
 class Domain: public SerializationContext {
     private:
+        // Non copyable
+        Domain& operator=(const Domain&) = delete;
+        Domain& operator=(Domain&&) = delete;
+
+        //Non movable
+        Domain(Domain const&) = delete;
+        Domain(Domain&&) = delete;
+
         unsigned mask;
         Domain(unsigned mask)
         {

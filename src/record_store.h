@@ -122,6 +122,7 @@ template <typename KeyType, typename RecordType>
 class RecordStore:public audio_file_tags::AudioFileRecordStore
 {
     private:
+        friend RecordType;
     protected:
         // file records table
         std::unordered_map<KeyType, RecordType> records;
@@ -130,7 +131,7 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         std::recursive_mutex mutex;
         virtual inline int cb_update(const KeyType& key)
         {
-            return audio_file_tags::handle_file(key.c_str(), *this);
+            return audio_file_tags::handle_file(rootdir.c_str(), key.c_str(), *this);
         }
         std::string rootdir;
         std::string datafile;
@@ -212,7 +213,7 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         }
 
     protected:
-        // delegate this impl class, to remove CTOR requirements on RecordType class.
+        // delegate this to the impl class, removes CTOR requirements on RecordType class.
         virtual void new_record(const char* location)=0;
 
     public:
@@ -221,8 +222,6 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
             if (records.find(location) == records.end())
             {
                 new_record(location);
-//                KeyType kt_location(location);
-//                records[kt_location] = RecordType(kt_location);
             }
             return (audio_file_tags::AudioFileRecord&)(records[location]);
         }

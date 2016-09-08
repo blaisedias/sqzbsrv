@@ -59,10 +59,10 @@ namespace audio_file_tags
             virtual void dump_records()=0;
     };
 
-    int handle_file(const char *, AudioFileRecordStore& );
-    int handle_directory(const char * , AudioFileRecordStore&);
-    int handle_file(const std::string&, AudioFileRecordStore& );
-    int handle_directory(const std::string&, AudioFileRecordStore&);
+    int handle_file(const char*, const char*, AudioFileRecordStore& );
+    int handle_directory(const char* , const char*, AudioFileRecordStore&);
+    int handle_file(const std::string&, const std::string&, AudioFileRecordStore& );
+    int handle_directory(const std::string&, const std::string&, AudioFileRecordStore&);
     extern bool verbose;
 
     class AudioFileRecordStoreCollection

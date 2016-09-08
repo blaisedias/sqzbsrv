@@ -27,17 +27,18 @@ Scanner::Scanner(audio_file_tags::AudioFileRecordStore& store):record_store(stor
 
 int Scanner::handle_file(const char *filename)
 {
-    audio_file_tags::handle_file(filename, record_store);
+    audio_file_tags::handle_file(rootdir.c_str(), filename, record_store);
     return 1;
 }
 
 int Scanner::handle_directory(const char *dirname)
 {
-    return audio_file_tags::handle_directory(dirname, record_store);
+    return audio_file_tags::handle_directory(rootdir.c_str(), dirname, record_store);
 }
 
 void Scanner::scan(const char *rootdir)
 {
+    this->rootdir = rootdir;
     dirwalk(rootdir);
 }
 }
