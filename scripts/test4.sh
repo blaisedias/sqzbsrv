@@ -26,3 +26,7 @@ diff txt/artists.txt  txt/s_artists.txt
 diff txt/genres.txt  txt/s_genres.txt  
 diff txt/titles.txt txt/s_titles.txt
 #diff txt/dump.txt txt/s_dump.txt
+fgrep -w TITLE txt/dump.txt | wc
+fgrep -w ALBUM txt/dump.txt | uniq | wc
+fgrep -w TITLE txt/s_dump.txt | wc
+fgrep -w ALBUM txt/s_dump.txt | uniq | wc
