@@ -19,21 +19,27 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 */
 #ifndef FS_UTILS_H_INCLUDED
 #define FS_UTILS_H_INCLUDED
+#include <stdint.h>
+#include <time.h>
+
 namespace fs_utils
 {
-//  void dirwalk(const char *,
-//            int (*)(const char * ),
-//            int (*)(const char * ),
-//            bool ignore_symlinks=true);
+    class handler {
+        public:
+            virtual int handle_file(const char *)=0;
+            virtual int handle_directory(const char *)=0;
+            virtual ~handler(){};
+            void dirwalk(const char * path, bool ignore_symlinks=true );
+    };
 
-  class handler {
-      public:
-          virtual int handle_file(const char *)=0;
-          virtual int handle_directory(const char *)=0;
-          virtual ~handler(){};
-          void dirwalk(const char * path, bool ignore_symlinks=true );
-  };
+    extern bool verbose;
 
-  extern bool verbose;
+    uintmax_t file_size(const std::string& filename);
+    uintmax_t file_size(const char* f);
+    time_t file_timestamp(const std::string& filename);
+    time_t file_timestamp(const char* f);
+
+    void path_append(std::string& path, const char *frag);
+    void path_append(std::string& path, const std::string& frag);
 }
 #endif

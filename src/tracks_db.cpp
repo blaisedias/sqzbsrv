@@ -21,7 +21,6 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <iostream>
 #include <memory>
-#include <boost/filesystem.hpp>
 #include <sstream>
 
 #undef DEBUG
@@ -33,6 +32,7 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 
+#include "fs_utils.h"
 #include "audio_tags.h"
 #include "record_store.h"
 #include "tracks_db.h"
@@ -257,21 +257,16 @@ class tracksRecordStore: public record_store::RecordStore<std::string, TrackInfo
         uintmax_t file_size(const std::string& f)
         {
             std::string filename(rootdir);
-            //FIXME: 
-            filename.append("/");
-            filename.append(f);
-            return boost::filesystem::file_size(filename);
+            fs_utils::path_append(filename, f);
+            return fs_utils::file_size(filename);
         }
 
         time_t file_timestamp(const std::string& f)
         {
             std::string filename(rootdir);
-            //FIXME: 
-            filename.append("/");
-            filename.append(f);
-            return boost::filesystem::last_write_time(filename);
+            fs_utils::path_append(filename, f);
+            return fs_utils::file_timestamp(filename);
         }
-
 };
 
 audio_file_tags::AudioFileRecordStoreCollection* new_record_store_collection()

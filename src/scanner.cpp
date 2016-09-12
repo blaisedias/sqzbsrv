@@ -17,8 +17,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "scanner.h"
 #include <iostream>
+#include "scanner.h"
 
 namespace Scanner {
 Scanner::Scanner(audio_file_tags::AudioFileRecordStore& store):record_store(store)

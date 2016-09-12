@@ -21,7 +21,6 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include <memory>
 #include <unordered_map>
 #include <map>
-#include <boost/filesystem.hpp>
 
 // for serialisation
 #include <fstream>
@@ -29,6 +28,7 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include <boost/archive/text_iarchive.hpp>
 #include <sstream>
 
+#include "fs_utils.h"
 #include "audio_tags.h"
 #include "record_store.h"
 #include "songs_db.h"
@@ -364,19 +364,15 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
         uintmax_t file_size(const char* f)
         {
             std::string filename(rootdir);
-            //FIXME: 
-            filename.append("/");
-            filename.append(f);
-            return boost::filesystem::file_size(filename);
+            fs_utils::path_append(filename, f);
+            return fs_utils::file_size(filename);
         }
 
         time_t file_timestamp(const char* f)
         {
             std::string filename(rootdir);
-            //FIXME: 
-            filename.append("/");
-            filename.append(f);
-            return boost::filesystem::last_write_time(filename);
+            fs_utils::path_append(filename, f);
+            return fs_utils::file_timestamp(filename);
         }
 
         inline sstring::SerializationContext *serialization_context()
