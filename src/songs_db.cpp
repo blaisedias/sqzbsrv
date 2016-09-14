@@ -22,6 +22,8 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include <unordered_map>
 #include <map>
 
+#include <string.h>
+
 // for serialisation
 #include <fstream>
 #include <boost/archive/text_oarchive.hpp>
@@ -311,7 +313,9 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
     protected:
         virtual inline int cb_update(const sstring::String& key)
         {
-            return audio_file_tags::handle_file(rootdir.c_str(), key, *this); 
+            std::string filepath(rootdir);
+            fs_utils::path_append(filepath, key);
+            return audio_file_tags::handle_file(filepath, key.c_str(), *this); 
         }
     public:
         songsRecordStore(const char *location, const char *fname): record_store::RecordStore<sstring::String, SongInfo>(location, fname)

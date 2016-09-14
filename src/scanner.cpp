@@ -17,7 +17,10 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <stdexcept>
 #include <iostream>
+#include <string.h>
+#include <assert.h>
 #include "scanner.h"
 
 namespace Scanner {
@@ -27,7 +30,11 @@ Scanner::Scanner(audio_file_tags::AudioFileRecordStore& store):record_store(stor
 
 int Scanner::handle_file(const char *filename)
 {
-    audio_file_tags::handle_file(rootdir.c_str(), filename, record_store);
+    assert(rootdir.length() < strlen(filename));
+    if (0 != strncmp(rootdir.c_str(), filename, rootdir.length()))
+        throw std::runtime_error("file not in record store filepath");
+    const char *relpath = filename + rootdir.length();
+    audio_file_tags::handle_file(filename, relpath, record_store);
     return 1;
 }
 

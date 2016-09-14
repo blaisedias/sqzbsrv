@@ -23,6 +23,7 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include <unordered_map>
 #include <mutex>
 
+#include "fs_utils.h"
 #include "audio_file_tags.h"
 #include "scanner.h"
 
@@ -131,7 +132,9 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         std::recursive_mutex mutex;
         virtual inline int cb_update(const KeyType& key)
         {
-            return audio_file_tags::handle_file(rootdir.c_str(), key.c_str(), *this);
+            std::string filepath(rootdir);
+            fs_utils::path_append(filepath, key);
+            return audio_file_tags::handle_file(filepath, key.c_str(), *this);
         }
         std::string rootdir;
         std::string datafile;
