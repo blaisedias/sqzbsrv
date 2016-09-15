@@ -276,22 +276,14 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         // Enumerate all records and refresh them by invoking the supplied function.
         void refresh_records()
         {
-            std::stack<KeyType> to_delete;
             for(typename std::unordered_map<KeyType, RecordType>::iterator itr=records.begin();
                     itr != records.end(); ++itr)
             {
                 if (0 == cb_update(itr->first))
                 {
-                    to_delete.push(itr->first);
+//                    std::cerr << "erasing " << itr->first << std::endl;
+                    itr = records.erase(itr);
                 }
-            }
-
-            while(!to_delete.empty())
-            {
-                KeyType k = to_delete.top();
-                std::cerr << "erasing " << k << std::endl;
-                records.erase(k);
-                to_delete.pop();
             }
         }
 
