@@ -72,6 +72,7 @@ namespace audio_file_tags
             virtual void load(const char* rootdir)=0;
             virtual void scan(const char* rootdir)=0;
             virtual void refresh_records()=0;
+            virtual void update_records()=0;
 
             virtual void save()=0;
 

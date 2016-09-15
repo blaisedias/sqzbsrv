@@ -22,6 +22,7 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <unordered_map>
 #include <mutex>
+#include <stack>
 
 #include "fs_utils.h"
 #include "audio_file_tags.h"
@@ -87,6 +88,18 @@ class RecordStoreCollection : public audio_file_tags::AudioFileRecordStoreCollec
             {
                 RecordStoreType& rec_store = *itr->second;
                 rec_store.refresh_records();
+            }
+        }
+
+        void update_records()
+        {
+            for (auto itr=stores.begin(); itr != stores.end(); ++itr)
+            {
+                RecordStoreType& rec_store = *itr->second;
+                rec_store.refresh_records();
+                Scanner::Scanner scanner = Scanner::Scanner((audio_file_tags::AudioFileRecordStore&)rec_store);
+                std::cerr << " update " << itr->first << std::endl;
+                scanner.scan(itr->first.c_str());
             }
         }
 
@@ -263,10 +276,22 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
         // Enumerate all records and refresh them by invoking the supplied function.
         void refresh_records()
         {
+            std::stack<KeyType> to_delete;
             for(typename std::unordered_map<KeyType, RecordType>::iterator itr=records.begin();
                     itr != records.end(); ++itr)
             {
-                cb_update(itr->first);
+                if (0 == cb_update(itr->first))
+                {
+                    to_delete.push(itr->first);
+                }
+            }
+
+            while(!to_delete.empty())
+            {
+                KeyType k = to_delete.top();
+                std::cerr << "erasing " << k << std::endl;
+                records.erase(k);
+                to_delete.pop();
             }
         }
 

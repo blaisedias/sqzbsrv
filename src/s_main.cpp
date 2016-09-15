@@ -100,6 +100,7 @@ void process_command(const char *cmd, audio_file_tags::AudioFileRecordStoreColle
     }
     if (0 == strcmp(cmd, "update"))
     {
+        record_store_collection.update_records();
     }
     if (0 == strcmp(cmd, "refresh"))
     {

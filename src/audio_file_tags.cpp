@@ -36,28 +36,37 @@ bool verbose = false;
 
 int handle_file(const char* filepath, const char* filekey, AudioFileRecordStore& record_store)
 {
-    if(record_store.find_record(filekey) == NULL
-            || record_store.record_update_required(filekey))
+    bool record_exists = record_store.find_record(filekey) != NULL;
+
+    // Scanning a file for tags is expensive, so only do it if required.
+    if(record_exists
+            && !record_store.record_update_required(filekey))
     {
+        // no update reqquired so has been handled.
+        return 1;
+    }
+
     TagLib::FileRef f(filepath);
     if (!f.isNull() && f.tag())
     {
         AudioFileRecord &record = record_store.get_record(filekey);
         record.update_start();
-if (verbose)
-{
-        TagLib::Tag *tag = f.tag();
-        std::cout << filepath << endl;
-        std::cout << filekey << endl;
-        std::cout << "-- TAG (basic) --" << endl;
-        std::cout << "title   - \"" << tag->title()   << "\"" << endl;
-        std::cout << "artist  - \"" << tag->artist()  << "\"" << endl;
-        std::cout << "album   - \"" << tag->album()   << "\"" << endl;
-        std::cout << "year    - \"" << tag->year()    << "\"" << endl;
-        std::cout << "comment - \"" << tag->comment() << "\"" << endl;
-        std::cout << "track   - \"" << tag->track()   << "\"" << endl;
-        std::cout << "genre   - \"" << tag->genre()   << "\"" << endl;
-}
+
+        if (verbose)
+        {
+            TagLib::Tag *tag = f.tag();
+            std::cout << filepath << endl;
+            std::cout << filekey << endl;
+            std::cout << "-- TAG (basic) --" << endl;
+            std::cout << "title   - \"" << tag->title()   << "\"" << endl;
+            std::cout << "artist  - \"" << tag->artist()  << "\"" << endl;
+            std::cout << "album   - \"" << tag->album()   << "\"" << endl;
+            std::cout << "year    - \"" << tag->year()    << "\"" << endl;
+            std::cout << "comment - \"" << tag->comment() << "\"" << endl;
+            std::cout << "track   - \"" << tag->track()   << "\"" << endl;
+            std::cout << "genre   - \"" << tag->genre()   << "\"" << endl;
+        }
+
         TagLib::PropertyMap tags = f.file()->properties();
 
         for(TagLib::PropertyMap::ConstIterator i = tags.begin(); i != tags.end(); ++i)
@@ -67,6 +76,7 @@ if (verbose)
                 record.update(i->first.toCString(true), j->toCString(true));
             }
         }
+
         if (f.audioProperties())
         {
             TagLib::AudioProperties *properties = f.audioProperties();
@@ -75,10 +85,11 @@ if (verbose)
             record.update(audio_tags::SAMPLERATE, properties->sampleRate());
             record.update(audio_tags::CHANNELS, properties->channels());
         }
+
         record.update_complete();
         return 1;
     }
-}
+
     return 0;
 }
 

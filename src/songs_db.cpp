@@ -260,12 +260,18 @@ void SongInfo::update_complete()
 
 bool SongInfo::update_required()
 {
+    assert(ctxt != NULL);
     if (complete)
     {
-        auto find = infomap.find(audio_tags::FILEPATH);
-        assert(ctxt != NULL);
-        return file_timestamp != ctxt->file_timestamp(find->second)
-            || file_length != ctxt->file_size(find->second);
+        try
+        {
+            auto find = infomap.find(audio_tags::FILEPATH);
+            return file_timestamp != ctxt->file_timestamp(find->second)
+                || file_length != ctxt->file_size(find->second);
+        }
+        catch(...)
+        {
+        }
     }
     return true;
 }

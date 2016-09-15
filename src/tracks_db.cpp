@@ -163,9 +163,16 @@ class TrackInfoImpl : audio_file_tags::AudioFileRecord {
         bool update_required()
         {
             assert(ctxt != NULL);
-            return (complete != true)
-                || file_timestamp != ctxt->file_timestamp(infomap[0])
-                || file_length != ctxt->file_size(infomap[0]);
+            try
+            {
+                return (complete != true)
+                    || file_timestamp != ctxt->file_timestamp(infomap[0])
+                    || file_length != ctxt->file_size(infomap[0]);
+            }
+            catch(...)
+            {
+                return true;
+            }
         }
 
         void update_complete()
