@@ -41,5 +41,11 @@ namespace fs_utils
 
     void path_append(std::string& path, const char *frag);
     void path_append(std::string& path, const std::string& frag);
+
+    std::string dirname(std::string& filepath);
+    std::string dirname(const char* filepath);
+    std::string filename(std::string& filepath);
+    std::string filename(const char* filepath);
+    bool exists(const char* filepath);
 }
 #endif

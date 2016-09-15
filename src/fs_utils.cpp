@@ -142,4 +142,30 @@ void path_append(std::string& path, const std::string& frag)
     path_append(path, frag.c_str());
 }
 
+std::string dirname(std::string& filepath)
+{
+    return boost::filesystem::path(filepath).parent_path().generic_string();
+}
+
+std::string dirname(const char* filepath)
+{
+    return boost::filesystem::path(filepath).parent_path().generic_string();
+}
+
+
+std::string filename(std::string& filepath)
+{
+    return boost::filesystem::path(filepath).filename().generic_string();
+}
+
+std::string filename(const char* filepath)
+{
+    return boost::filesystem::path(filepath).filename().generic_string();
+}
+
+bool exists(const char* filepath)
+{
+    return boost::filesystem::exists(filepath);
+}
+
 }
