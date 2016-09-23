@@ -121,7 +121,7 @@ class String {
         String(const std::string& strng, SerializationContext *psc);
         String(const String &sstr);
         String(unsigned id=0);
-        virtual ~String();
+        ~String();
 
         String& operator=(const String& sstr);
         bool operator==(const String& sstr) const;
