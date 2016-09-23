@@ -489,8 +489,8 @@ class RegistryImpl : public Registry
                         {
                             // ID already in use
                             unsigned newid = currentID++;
+                            domain->id_remap[pcc->id] = newid;
                             pcc->id = newid;
-                            domain->id_remap[pcc->v_id()] = newid;
                         }
                     }
                     pcc->dom |= domain->mask;
