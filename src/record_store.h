@@ -78,8 +78,7 @@ class RecordStoreCollection : public audio_file_tags::AudioFileRecordStoreCollec
                 stores[rootdir] = new RecordStoreType(rootdir, dbfilename.c_str());
             }
             RecordStoreType& rec_store = *stores[rootdir];
-            Scanner::Scanner scanner = Scanner::Scanner((audio_file_tags::AudioFileRecordStore&)rec_store);
-            scanner.scan(rootdir);
+            rec_store.scan();
         }
 
         void refresh_records()
@@ -97,9 +96,8 @@ class RecordStoreCollection : public audio_file_tags::AudioFileRecordStoreCollec
             {
                 RecordStoreType& rec_store = *itr->second;
                 rec_store.refresh_records();
-                Scanner::Scanner scanner = Scanner::Scanner((audio_file_tags::AudioFileRecordStore&)rec_store);
                 std::cerr << " update " << itr->first << std::endl;
-                scanner.scan(itr->first.c_str());
+                rec_store.scan();
             }
         }
 
@@ -214,6 +212,12 @@ class RecordStore:public audio_file_tags::AudioFileRecordStore
                 ar >> rec;
                 recs_in.emplace(key,rec);
             }
+        }
+
+        virtual void scan()
+        {
+            Scanner::Scanner scanner = Scanner::Scanner(*this);
+            scanner.scan(rootdir.c_str());
         }
 
         inline const audio_file_tags::AudioFileRecord* const find_record(const char *location)

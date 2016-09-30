@@ -54,6 +54,7 @@ namespace audio_file_tags
             virtual void refresh_records()=0;
             virtual void save()=0;
             virtual void load()=0;
+            virtual void scan()=0;
 
             virtual void test()=0;
             virtual void dump_records()=0;
