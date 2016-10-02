@@ -208,24 +208,32 @@ class rc_cstr
         bool operator<(const rc_cstr &cmp_cchars) const
         {
             // TODO: make this faster.
+            if (id == cmp_cchars.id)
+                return false;
             return strcmp(chars, cmp_cchars.chars) < 0;
         }
 
         bool operator<(const rc_cstr *cmp_cchars) const
         {
             // TODO: make this faster.
+            if (id == cmp_cchars->id)
+                return false;
             return strcmp(chars, cmp_cchars->chars) < 0;
         }
 
         bool operator>(const rc_cstr &cmp_cchars) const
         {
             // TODO: make this faster.
+            if (id == cmp_cchars->id)
+                return false;
             return strcmp(chars, cmp_cchars.chars) > 0;
         }
 
         bool operator>(const rc_cstr *cmp_cchars) const
         {
             // TODO: make this faster.
+            if (id == cmp_cchars->id)
+                return false;
             return strcmp(chars, cmp_cchars->chars) > 0;
         }
 
@@ -932,6 +940,8 @@ bool String::operator==(const char * c_str) const
 
 bool String::operator<(const String& sstr) const
 {
+    if (id == sstr.id)
+        return false;
     rc_cstr *pcc = const_cast<rc_cstr *>(defaultRegister.getcc(id));
     rc_cstr *pcc_other = const_cast<rc_cstr *>(defaultRegister.getcc(sstr.id));
     return *pcc < *pcc_other;
@@ -1013,3 +1023,11 @@ ContextGuard::~ContextGuard()
 
 } // namespace
 
+namespace std
+{
+    template<>
+        void swap(sstring::String& s1, sstring::String& s2)
+        {
+            s1.swap(s2);
+        }
+}

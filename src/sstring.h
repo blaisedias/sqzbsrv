@@ -162,6 +162,15 @@ class String {
         //Hashing support
         std::size_t hash() const;
 
+        //Sorting support
+        void swap(String& other)
+        {
+            // faster avoids refdn() and refup()
+            register unsigned tmpid = id;
+            id = other.id;
+            other.id = tmpid;
+        }
+
         //
         void setSerializationContext(SerializationContext *psc);
 };
