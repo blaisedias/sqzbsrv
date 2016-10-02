@@ -224,7 +224,7 @@ class rc_cstr
         bool operator>(const rc_cstr &cmp_cchars) const
         {
             // TODO: make this faster.
-            if (id == cmp_cchars->id)
+            if (id == cmp_cchars.id)
                 return false;
             return strcmp(chars, cmp_cchars.chars) > 0;
         }
@@ -506,7 +506,7 @@ class RegistryImpl : public Registry
                             continue;
                         }
 
-                        // @here, currentID must be greater than an loaded ID
+                        // @here, currentID must be greater than any loaded ID
                         // since we've ensured that the its value is >= to the
                         // ceilingID value associated with this serialisation
                         // so if the ID value is in use, we have to map the
