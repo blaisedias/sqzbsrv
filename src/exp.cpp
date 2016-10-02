@@ -20,7 +20,6 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include <boost/filesystem.hpp>
 #include <iostream>
 #include <vector>
-#include "sstring.h"
 #include <sstream>
 #define SSTR( x ) dynamic_cast< std::ostringstream & >( \
         ( std::ostringstream() << std::dec << (x) ) ).str()
@@ -32,20 +31,31 @@ using namespace std;
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 
+#include <thread>
+
+#include "sstring.h"
 const bool cc_dump=false;
 
 vector<sstring::String> strings;
 
-void test(void);
+void testSC(void);
+void test0(void);
 
 int main(int argc, char *argv[])
 {
-#if 0
-    test();
-#else
+    std::thread t1(test0);
+    t1.join();
+    test0();
+    cout << "main TID " << std::this_thread::get_id() << "\n";
+}
+
+void test0(void)
+{
+    sstring::SerializationContext *sctxt = sstring::getRegistry().makeSerializationContext();
+    sstring::ContextGuard ctxtg(sctxt);
+
     std::string stdaardvark("Aardvark");
-    sstring::getRegistry().load("data/exp_cchars.dat",
-                     sstring::getRegistry().getDefaultSerializationContext());
+    sstring::getRegistry().load("data/exp_cchars.dat");
 if(cc_dump)
     sstring::getRegistry().dump();
     strings.reserve(100);
@@ -89,8 +99,7 @@ std::cout << "== Phase II  " << std::endl;
 if(cc_dump)
     sstring::getRegistry().dump();
 
-        sstring::getRegistry().save("data/exp_cchars.dat",
-                     sstring::getRegistry().getDefaultSerializationContext());
+        sstring::getRegistry().save("data/exp_cchars.dat");
     }
 
     std::cout << "---------------" << std::endl;
@@ -120,8 +129,7 @@ std::cout << "(" << strings.size() << ")" << std::endl;
         {
             std::cout << strings[ix] << std::endl;
         }
-        sstring::getRegistry().save("data/exp_cchars.dat",
-                     sstring::getRegistry().getDefaultSerializationContext());
+        sstring::getRegistry().save("data/exp_cchars.dat");
 if(cc_dump)
     sstring::getRegistry().dump();
         
@@ -137,7 +145,7 @@ if(cc_dump)
     }
 //    strings.clear();
     cout << "Fini" << "\n";
-#endif
+    cout << "TID " << std::this_thread::get_id() << "\n";
 }
 
 #include <unordered_map>
@@ -147,7 +155,7 @@ typedef std::pair<sstring::String, sstring::String> INFOMAP_PAIR;
 typedef std::tuple<sstring::String, sstring::SerializationContext*> INFOMAP_TUP;
 static sstring::SerializationContext *sctxt;
 
-void test()
+void testSC()
 {
     sctxt = sstring::getRegistry().makeSerializationContext();
     sstring::String s1("abc", sctxt);

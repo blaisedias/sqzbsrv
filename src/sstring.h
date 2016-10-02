@@ -53,25 +53,25 @@ class Registry {
         virtual bool exists(const char *)=0;
 
         // load from a file, merges with existing content
-        virtual void load(const char * filename, SerializationContext* psc)
+        virtual void load(const char * filename)
         {
             std::ifstream ifs(filename);
             if (ifs.is_open())
-                load(ifs, psc);
+                load(ifs);
         }
         // load from a stream
-        virtual void load(std::istream&, SerializationContext *)=0;
+        virtual void load(std::istream&)=0;
 
         // saves snapshot to file, can be called at any time.
         // If pruning is required it should be done before saving.
-        virtual void save(const char* filename, SerializationContext* psc)
+        virtual void save(const char* filename)
         {
             std::ofstream ofs(filename);
             if (ofs.is_open())
-                save(ofs, psc);
+                save(ofs);
         }
         // saves snapshot to a stream, can be called at any time.
-        virtual void save(std::ostream&, SerializationContext*)=0;
+        virtual void save(std::ostream&)=0;
 
         // removes unused strings, IDs are not currently recycled
         virtual void prune()=0;
@@ -79,7 +79,7 @@ class Registry {
         // serialization context, to support multiple
         // serialization to and deserialization ops from removable storage.
         virtual SerializationContext*  makeSerializationContext()=0;
-        virtual SerializationContext*  getDefaultSerializationContext()=0;
+        //virtual SerializationContext*  getDefaultSerializationContext()=0;
 
         // Debug helper function. TODO: give it a stream to dump to.
         virtual void dump()=0;
@@ -97,6 +97,21 @@ class Registry {
 
 // Currently only support for a single default string data database.
 Registry& getRegistry();
+
+class ContextGuard {
+    SerializationContext *prev;
+    public:
+        // Non copyable
+        ContextGuard& operator=(const ContextGuard&) = delete;
+        ContextGuard& operator=(ContextGuard&&) = delete;
+
+        //Non movable
+        ContextGuard(ContextGuard const&) = delete;
+        ContextGuard(ContextGuard&&) = delete;
+
+    ContextGuard(SerializationContext *psc);
+    ~ContextGuard();
+};
 
 class String {
     private:

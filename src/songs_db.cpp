@@ -327,6 +327,7 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
         songsRecordStore(const char *location, const char *fname): record_store::RecordStore<sstring::String, SongInfo>(location, fname)
         {
             serialization_ctxt = sstring::getRegistry().makeSerializationContext();
+            sstring::ContextGuard cg(serialization_ctxt);
             std::vector <std::string> tag_strings;
             audio_tags::get_supported_taglist(tag_strings);
             fixed_strings_list.push_back(unknown);
@@ -336,8 +337,9 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
 
         void serialise_records(std::ostream& ofs, const std::unordered_map<sstring::String, SongInfo>& recs_out)
         {
+            sstring::ContextGuard cg(serialization_ctxt);
             sstring::getRegistry().prune();
-            sstring::getRegistry().save(ofs, serialization_ctxt);
+            sstring::getRegistry().save(ofs);
             if (debug)
                 std::cerr << " cchars written" << std::endl;
             record_store::RecordStore<sstring::String, SongInfo>::serialise_records(ofs, recs_out);
@@ -345,7 +347,8 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
 
         void deserialise_records(std::istream& ifs, std::unordered_map<sstring::String, SongInfo>& recs_in)
         {
-            sstring::getRegistry().load(ifs, serialization_ctxt);
+            sstring::ContextGuard cg(serialization_ctxt);
+            sstring::getRegistry().load(ifs);
             if (debug)
                 std::cerr << " cchars loaded" << std::endl;
             record_store::RecordStore<sstring::String, SongInfo>::deserialise_records(ifs, recs_in);
@@ -354,6 +357,24 @@ class songsRecordStore: public record_store::RecordStore<sstring::String, SongIn
                 assert(itr->second.ctxt == NULL);
                 itr->second.ctxt = this;
             }
+        }
+
+        void scan()
+        {
+            sstring::ContextGuard cg(serialization_ctxt);
+            record_store::RecordStore<sstring::String, SongInfo>::scan();
+        }
+
+        void refresh_records()
+        {
+            sstring::ContextGuard cg(serialization_ctxt);
+            record_store::RecordStore<sstring::String, SongInfo>::refresh_records();
+        }
+
+        void test()
+        {
+            sstring::ContextGuard cg(serialization_ctxt);
+            record_store::RecordStore<sstring::String, SongInfo>::test();
         }
 
         inline const audio_file_tags::AudioFileRecord* const find_record(const char *location)

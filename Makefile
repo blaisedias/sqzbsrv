@@ -21,12 +21,14 @@ ifeq ($(TARG_ARCH),armv6l)
 	TARG_CF =
 endif
 
+#DEFS = -DSSTRING_HAS_DEFAULT_CONTEXT
+DEFS =
 SRC = src
 BIN = bin
 OD = obj
 LIBS = -lboost_filesystem -lboost_system -lboost_serialization -ltag $(TARG_LIBS)
 GD = Makefile
-CF = -std=c++11 -Wall -g $(TARG_CF)
+CF = -std=c++11 -Wall -g $(TARG_CF) $(DEFS)
 
 OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o \
 	   $(OD)/audio_tags.o  $(OD)/tracks_db.o \
@@ -37,7 +39,7 @@ S_OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o \
   		 $(OD)/songs_db.o $(OD)/sstring.o \
 		 $(OD)/s_main.o
 
-all: $(BIN)/rtags $(BIN)/s_rtags $(BIN)/exp
+all: $(BIN)/rtags $(BIN)/s_rtags $(BIN)/exp $(BIN)/exp2
 
 .PHONY: clean
 
@@ -66,6 +68,9 @@ $(OD)/songs_db.o: $(SRC)/songs_db.cpp $(SRC)/record_store.h $(SRC)/audio_tags.h 
 $(OD)/exp.o: $(SRC)/exp.cpp $(SRC)/sstring.h $(GD)
 	g++ $(CF) -c -o $(@) $< 
 
+$(OD)/exp2.o: $(SRC)/exp2.cpp $(SRC)/sstring.h $(GD)
+	g++ $(CF) -c -o $(@) $< 
+
 $(OD)/audio_file_tags.o: $(SRC)/audio_file_tags.cpp $(SRC)/audio_file_tags.h $(SRC)/audio_tags.h $(GD) 
 	g++ $(CF) -c -o $(@) $< -I /usr/include/taglib
 
@@ -85,5 +90,8 @@ $(OD)/s_main.o: $(SRC)/s_main.cpp $(SRC)/sstring.h $(SRC)/songs_db.h $(SRC)/scan
 	g++ $(CF) -c -o $(@) $< 
 
 bin/exp: $(OD)/exp.o $(OD)/sstring.o
+	g++ -o $(@) $^  -lboost_filesystem -lboost_system -lboost_serialization
+
+bin/exp2: $(OD)/exp2.o $(OD)/sstring.o
 	g++ -o $(@) $^  -lboost_filesystem -lboost_system -lboost_serialization
 

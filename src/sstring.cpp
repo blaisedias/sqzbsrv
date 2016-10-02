@@ -23,6 +23,7 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include <stack>
 #include <atomic>
 #include <mutex>
+#include <thread>
 #include <assert.h>
 #include "sstring.h"
 
@@ -321,6 +322,9 @@ class Domain: public SerializationContext {
         Domain(Domain&&) = delete;
 
         unsigned mask;
+        std::unordered_map<unsigned, unsigned> id_remap;
+        friend class RegistryImpl;
+    public:
         Domain(unsigned mask)
         {
             this->mask = mask;
@@ -330,9 +334,6 @@ class Domain: public SerializationContext {
         {
         }
 
-        std::unordered_map<unsigned, unsigned> id_remap;
-        friend class RegistryImpl;
-    public:
         inline bool is_remapped()
         {
             return id_remap.size() != 0;
@@ -351,6 +352,13 @@ class Domain: public SerializationContext {
             return id_out;
         }
 };
+
+#ifdef  SSTRING_HAS_DEFAULT_CONTEXT
+static Domain* defaultDomain = new Domain(1);
+#else
+static Domain* defaultDomain = NULL;
+#endif
+static thread_local Domain* currentDomain = defaultDomain;
 
 // string id to rc_cstr instance map
 typedef std::unordered_map<unsigned, rc_cstr*> IDCCMAP;
@@ -373,6 +381,7 @@ class RegistryImpl : public Registry
         unsigned assigned_doms = 0;
         std::unordered_map<class Domain*, class Domain*> known_domains;
 
+        friend ContextGuard;
         Domain *domainFromSerialisationContext(SerializationContext* psc)
         {
             try
@@ -407,6 +416,9 @@ class RegistryImpl : public Registry
         {
             std::lock_guard<std::mutex> lockg(domain_factory_mutex);
 
+            if (defaultDomain && dom == defaultDomain)
+                throw std::invalid_argument("Invalid serialization context, default context cannot be freed");
+
             try
             {
                 dom = known_domains.at(dom);
@@ -425,14 +437,21 @@ class RegistryImpl : public Registry
         }
 
     public:
-        ~RegistryImpl() {};
-        RegistryImpl() {};
-
-        Domain* defaultDomain = getDomain();
-
-        void load(std::istream& ifs, SerializationContext* psc)
+        ~RegistryImpl() {}
+        RegistryImpl()
         {
-            Domain *domain = domainFromSerialisationContext(psc);
+            if (defaultDomain)
+            {
+                known_domains[defaultDomain] = defaultDomain;
+                assigned_doms |= 1;
+            }
+        }
+
+        void load(std::istream& ifs)
+        {
+            Domain *domain = currentDomain;
+            if (NULL == domain)
+                throw std::logic_error("sstring::RegistryImpl::load invalid context thread local");
             {
                 unsigned ceilingID;
                 ifs >> ceilingID;
@@ -501,9 +520,11 @@ class RegistryImpl : public Registry
         }
 
         // If pruning is required it should be done before saving.
-        void save(std::ostream& ofs, SerializationContext* psc)
+        void save(std::ostream& ofs)
         {
-            Domain *domain = domainFromSerialisationContext(psc);
+            Domain *domain = currentDomain;
+            if (NULL == domain)
+                throw std::logic_error("sstring::RegistryImpl::load invalid context thread local");
             {
                 unsigned ceilingID = 0;            
 //                unsigned long cc_map_size = id_pcc.size();
@@ -691,10 +712,11 @@ class RegistryImpl : public Registry
             return dynamic_cast<SerializationContext*>(dom);
         }
 
-        inline SerializationContext* getDefaultSerializationContext()
-        {
-           return dynamic_cast<SerializationContext*>(defaultDomain);
-        }
+//        inline SerializationContext* getDefaultSerializationContext()
+//        {
+//            assert(defaultDomain != NULL);
+//            return dynamic_cast<SerializationContext*>(defaultDomain);
+//        }
 
         void setDeleteImmediately(bool new_value)
         {
@@ -736,6 +758,8 @@ static StaticInitializer static_init;
 //
 String::String(const char * const chars, SerializationContext *psc): id(0)
 {
+    if (NULL == psc)
+        throw std::logic_error("sstring::RegistryImpl::load invalid context thread local");
     bind(defaultRegister.acquire_cchars(chars));
     setSerializationContext(psc);
     if (debug_string)
@@ -746,12 +770,14 @@ String::String(const char * const chars, SerializationContext *psc): id(0)
     }
 }
 
-String::String(const char * const chars):String(chars, defaultRegister.defaultDomain)
+String::String(const char * const chars):String(chars, currentDomain)
 {
 }
 
 String::String(const std::string& strng, SerializationContext *psc): id(0)
 {
+    if (NULL == psc)
+        throw std::logic_error("sstring::RegistryImpl::load invalid context thread local");
     bind(defaultRegister.acquire_cchars(strng.c_str()));
     setSerializationContext(psc);
     if (debug_string)
@@ -762,7 +788,7 @@ String::String(const std::string& strng, SerializationContext *psc): id(0)
     }
 }
 
-String::String(const std::string& strng):String(strng, defaultRegister.defaultDomain)
+String::String(const std::string& strng):String(strng, currentDomain)
 {
 }
 
@@ -946,9 +972,11 @@ const char * String::c_str() const
 template <class Archive>
     void String::load(Archive &ar, const unsigned int version)
 {
-    unsigned id;
-    ar & id;
-    bind(id);
+    unsigned ar_id;
+    unsigned mar_id;
+    ar & ar_id;
+    mar_id = currentDomain->remapped_id(ar_id);
+    bind(mar_id);
 }
 
 template <class Archive>
@@ -962,6 +990,23 @@ template <class Archive>
 void String::setSerializationContext(SerializationContext *psc)
 {
     defaultRegister.setSerializationContext(id, psc);
+}
+
+ContextGuard::ContextGuard(SerializationContext *psc)
+{
+    assert(psc != NULL);
+//    std::cerr << "ContextGuard(" << psc << ") -> "<< currentDomain <<  std::endl;
+    prev = currentDomain;
+    currentDomain = defaultRegister.domainFromSerialisationContext(psc);
+}
+
+ContextGuard::~ContextGuard()
+{
+//    std::cerr << "~ContextGuard " << prev << "-> " << currentDomain << std::endl;
+    if (prev != NULL)
+        currentDomain = defaultRegister.domainFromSerialisationContext(prev);
+    else
+        currentDomain = NULL;
 }
 
 // Module functions
