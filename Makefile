@@ -26,7 +26,7 @@ DEFS =
 SRC = src
 BIN = bin
 OD = obj
-LIBS = -lboost_filesystem -lboost_system -lboost_serialization -ltag $(TARG_LIBS)
+LIBS = -lboost_filesystem -lboost_system -lboost_serialization -ltag -lpthread $(TARG_LIBS)
 GD = Makefile
 CF = -std=c++11 -Wall -g $(TARG_CF) $(DEFS)
 
@@ -90,8 +90,8 @@ $(OD)/s_main.o: $(SRC)/s_main.cpp $(SRC)/sstring.h $(SRC)/songs_db.h $(SRC)/scan
 	g++ $(CF) -c -o $(@) $< 
 
 bin/exp: $(OD)/exp.o $(OD)/sstring.o
-	g++ -o $(@) $^  -lboost_filesystem -lboost_system -lboost_serialization
+	g++ -o $(@) $^ $(LIBDIRS) $(LIBS)
 
 bin/exp2: $(OD)/exp2.o $(OD)/sstring.o
-	g++ -o $(@) $^  -lboost_filesystem -lboost_system -lboost_serialization
+	g++ -o $(@) $^ $(LIBDIRS) $(LIBS)
 
