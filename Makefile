@@ -94,9 +94,9 @@ $(OD)/exp.o: $(SRC)/exp.cpp $(SRC)/sstring.h $(GD)
 $(OD)/exp2.o: $(SRC)/exp2.cpp $(SRC)/sstring.h $(GD)
 	g++ $(CF) -c -o $(@) $< 
 
-bin/exp: $(OD)/exp.o $(OD)/sstring.o
+bin/exp: $(OD)/exp.o $(OD)/sstring.o $(OD)/bdrwlock.o
 	g++ -o $(@) $^ $(LIBDIRS) $(LIBS)
 
-bin/exp2: $(OD)/exp2.o $(OD)/sstring.o
+bin/exp2: $(OD)/exp2.o $(OD)/sstring.o $(OD)/bdrwlock.o
 	g++ -o $(@) $^ $(LIBDIRS) $(LIBS)
 
