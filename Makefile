@@ -30,13 +30,15 @@ LIBS = -lboost_filesystem -lboost_system -lboost_serialization -ltag -lpthread $
 GD = Makefile
 CF = -std=c++11 -Wall -g $(TARG_CF) $(DEFS)
 
-OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o \
-	   $(OD)/audio_tags.o  $(OD)/tracks_db.o \
-	   $(OD)/tmain.o
+OBJS = 	$(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o \
+		$(OD)/audio_tags.o  $(OD)/tracks_db.o \
+		$(OD)/bdrwlock.o \
+	   	$(OD)/tmain.o
 
 S_OBJS = $(OD)/audio_file_tags.o $(OD)/fs_utils.o $(OD)/scanner.o \
   		 $(OD)/audio_tags.o  $(OD)/tracks_db.o \
   		 $(OD)/songs_db.o $(OD)/sstring.o \
+		 $(OD)/bdrwlock.o \
 		 $(OD)/s_main.o
 
 all: $(BIN)/rtags $(BIN)/s_rtags $(BIN)/exp $(BIN)/exp2
@@ -65,12 +67,6 @@ $(OD)/sstring.o: $(SRC)/sstring.cpp $(SRC)/sstring.h $(GD)
 $(OD)/songs_db.o: $(SRC)/songs_db.cpp $(SRC)/record_store.h $(SRC)/audio_tags.h $(SRC)/audio_file_tags.h $(SRC)/songs_db.h $(SRC)/sstring.h
 	g++ $(CF) -c -o $(@) $< 
 
-$(OD)/exp.o: $(SRC)/exp.cpp $(SRC)/sstring.h $(GD)
-	g++ $(CF) -c -o $(@) $< 
-
-$(OD)/exp2.o: $(SRC)/exp2.cpp $(SRC)/sstring.h $(GD)
-	g++ $(CF) -c -o $(@) $< 
-
 $(OD)/audio_file_tags.o: $(SRC)/audio_file_tags.cpp $(SRC)/audio_file_tags.h $(SRC)/audio_tags.h $(GD) 
 	g++ $(CF) -c -o $(@) $< -I /usr/include/taglib
 
@@ -87,6 +83,15 @@ $(OD)/tmain.o: $(SRC)/tmain.cpp $(SRC)/scanner.h $(SRC)/tracks_db.h $(SRC)/audio
 	g++ $(CF) -c -o $(@) $< 
 
 $(OD)/s_main.o: $(SRC)/s_main.cpp $(SRC)/sstring.h $(SRC)/songs_db.h $(SRC)/scanner.h $(SRC)/audio_tags.h $(SRC)/audio_file_tags.h
+	g++ $(CF) -c -o $(@) $< 
+
+$(OD)/bdrwlock.o: $(SRC)/bdrwlock.cpp $(SRC)/bdrwlock.h $(GD)
+	g++ $(CF) -c -o $(@) $< 
+
+$(OD)/exp.o: $(SRC)/exp.cpp $(SRC)/sstring.h $(GD)
+	g++ $(CF) -c -o $(@) $< 
+
+$(OD)/exp2.o: $(SRC)/exp2.cpp $(SRC)/sstring.h $(GD)
 	g++ $(CF) -c -o $(@) $< 
 
 bin/exp: $(OD)/exp.o $(OD)/sstring.o
