@@ -84,13 +84,6 @@ class Registry {
         // Debug helper function. TODO: give it a stream to dump to.
         virtual void dump()=0;
 
-        // delete policy
-        virtual void setDeleteImmediately(bool)=0;
-        virtual bool getDeleteImmediately()
-        {
-            return delete_immediately;
-        }
-
     protected:
         virtual ~Registry() {};
 };
@@ -135,7 +128,8 @@ class String {
         String(const char * const chars, SerializationContext *psc);
         String(const std::string& strng, SerializationContext *psc);
         String(const String &sstr);
-        String(unsigned id=0);
+        // :-( required for deserialization
+        String(): id(0){}
         ~String();
 
         String& operator=(const String& sstr);

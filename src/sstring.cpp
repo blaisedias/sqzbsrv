@@ -26,6 +26,7 @@ along with sqzbsrv.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include <assert.h>
 #include "sstring.h"
+#include "bdrwlock.h"
 
 // for serialisation
 #include <sstream>
@@ -145,8 +146,8 @@ class rc_cstr
             }
         }
 
-        rc_cstr(unsigned new_id, const char * const chars_in, std::size_t hashval=0):
-            id(new_id), chars(new_chars(chars_in)), hashv(hashval), hashv_set(hashval != 0)
+        rc_cstr(unsigned new_id, const char * const chars_in, const unsigned ref_count_in, std::size_t hashval=0):
+            id(new_id), chars(new_chars(chars_in)), hashv(hashval), hashv_set(hashval != 0), ref_count(ref_count_in)
         {
             if (debug_rc_cstr)
             {
@@ -383,7 +384,10 @@ class RegistryImpl : public Registry
         // 2) C-string to ID
         IDCCMAP id_pcc;
         CCMAP cc_id;
-        std::mutex mtx;
+        // Pruning (GC) must be serialised
+        std::mutex prune_lock;
+        // Read-Write lock for id_pcc and cc_id.
+        bdrwlock::FurwLock1 id_cc_lock;
 
         std::mutex domain_factory_mutex; 
         unsigned assigned_doms = 0;
@@ -443,7 +447,8 @@ class RegistryImpl : public Registry
                 delete dom;
             }
         }
-
+    
+        friend class String;
     public:
         ~RegistryImpl() {}
         RegistryImpl()
@@ -537,6 +542,7 @@ class RegistryImpl : public Registry
                 unsigned ceilingID = 0;            
 //                unsigned long cc_map_size = id_pcc.size();
                 std::vector<unsigned> v;
+                v.reserve(id_pcc.size());
                 // Serialise a snapshot:
                 //  1) lock,
                 //  2) record the ids we want to write out,
@@ -544,8 +550,7 @@ class RegistryImpl : public Registry
                 //      to ensure that rc_cstr instances are kept alive till
                 //      they've been written out.
                 {
-                    std::lock_guard<std::mutex> lockg(mtx);
-                    v.reserve(id_pcc.size());
+                    bdrwlock::read_lock_guard   rdlockg(id_cc_lock);
                     for(IDCCMAP::iterator itr=id_pcc.begin();
                             itr != id_pcc.end(); ++itr)
                     {
@@ -557,6 +562,7 @@ class RegistryImpl : public Registry
                         if(itr->second->v_id() > ceilingID)
                             ceilingID = itr->second->v_id();
                     }
+                    //rdlockg.unlock();
                 }
                 std::sort(v.begin(), v.end());
                 ++ceilingID;
@@ -574,20 +580,28 @@ class RegistryImpl : public Registry
 
         void prune()
         {
+            //Only one thread should prune.
+            std::lock_guard<std::mutex> lockg(prune_lock);
+            //Collect delete candidates, erase whilst iterating
+            //causes segfaults!
             std::stack<unsigned> to_delete;
-            for(IDCCMAP::iterator itr=id_pcc.begin();
-                    itr != id_pcc.end(); ++itr)
             {
-                const rc_cstr * pcchars = itr->second;
-                if ((pcchars != NULL) && (pcchars->v_ref_count() == 0))
+                bdrwlock::read_lock_guard   rdlockg(id_cc_lock);
+                for(IDCCMAP::iterator itr=id_pcc.begin();
+                        itr != id_pcc.end(); ++itr)
                 {
-                    if (debug_rc_cstr || debug_prune)
-                        std::cerr << "@prune: Erasing  " << pcchars->v_id() << " "<< *pcchars << nl;
-                    to_delete.push(pcchars->v_id());
+                    const rc_cstr * pcchars = itr->second;
+                    if ((pcchars != NULL) && (pcchars->v_ref_count() == 0))
+                    {
+                        if (debug_rc_cstr || debug_prune)
+                            std::cerr << "@prune: Erasing  " << pcchars->v_id() << " "<< *pcchars << nl;
+                        to_delete.push(pcchars->v_id());
+                    }
                 }
+                //rdlockg.unlock();
             }
 
-
+            bdrwlock::write_lock_guard   wrlockg(id_cc_lock);
             while(!to_delete.empty())
             {
                 {
@@ -597,6 +611,7 @@ class RegistryImpl : public Registry
                 }
                 to_delete.pop();
             }
+            //wrlockg.unlock();
         }
 
         void dump()
@@ -631,21 +646,54 @@ class RegistryImpl : public Registry
         unsigned acquire_cchars(const char * chars)
         {
             CCMAP::iterator find = cc_id.find(chars);
-            if (find == cc_id.end())
+            // First try Fast path:
+            // read lock to prevent deletes, and search for the string.
+            bdrwlock::read_lock_guard   rdlockg(id_cc_lock);
+            if (find != cc_id.end())
             {
-                unsigned new_id = currentID++;
-                rc_cstr * new_pcc= new rc_cstr(new_id, chars);
-                cc_id[new_pcc->v_str()] = new_id;
-                id_pcc[new_id] = new_pcc;
-                if (debug_registry)
-                    std::cout << "NEW   id=" << new_id << " " << cc_id.find(chars)->first << nl;
-                return new_id;
-            }
-            else
-            {
+                // String exists, so bump up in use count.
+                refup(find->second);
+                // and release the read lock.
+                rdlockg.unlock();
                 if (debug_registry)
                     std::cout << "FOUND id=" << find->second << " " << find->first << nl;
             }
+            else
+            {
+                // Slow path, first create the objects
+                unsigned new_id = currentID++;
+                // Creating an acquired string, os in use count mutb be 1
+                rc_cstr * new_pcc= new rc_cstr(new_id, chars, 1);
+                {
+                    //then drop the readlock,
+                    rdlockg.unlock();
+                    //get the write lock,
+                    bdrwlock::read_lock_guard   wrlockg(id_cc_lock);
+                    //and repeat the search
+                    find = cc_id.find(chars);
+                    if (find == cc_id.end())
+                    {
+                        // Not found, insert....
+                        cc_id[new_pcc->v_str()] = new_id;
+                        id_pcc[new_id] = new_pcc;
+                        if (debug_registry)
+                            std::cout << "NEW   id=" << new_id << " " << cc_id.find(chars)->first << nl;
+                        return new_id;
+                    }
+                    else
+                    {
+                        // we have the write lock so no other thread,
+                        // can delete this string, safe to bump up the in use count.
+                        refup(find->second);
+                    }
+                    //wrlockg.unlock();
+                }
+                // attempt to recycle the optimistically allocated ID value.
+                unsigned xid = new_id + 1;
+                currentID.compare_exchange_strong(xid, new_id);
+                delete new_pcc;
+            }
+            // @here find is always valid,  either from read-found, or write-found.
             return find->second;
         }
 
@@ -688,14 +736,6 @@ class RegistryImpl : public Registry
                     if (pcc->ref_count == 0)
                         std::cerr << "@refdn for id=" << id << ", ref_count == 0," << pcc->chars << std::endl;
                 }
-                if (pcc->ref_count == 0 && Registry::delete_immediately)
-                {
-                    if (debug_rc_cstr || debug_prune)
-                        std::cerr << "@refdn: Erasing  " << pcc->v_id() << " "<< pcc->v_str() << nl;
-                    cc_id.erase(pcc->chars);
-                    id_pcc.erase(pcc->id);
-                    delete pcc;
-                }
             }
             else
             {
@@ -725,16 +765,6 @@ class RegistryImpl : public Registry
 //            assert(defaultDomain != NULL);
 //            return dynamic_cast<SerializationContext*>(defaultDomain);
 //        }
-
-        void setDeleteImmediately(bool new_value)
-        {
-            if (new_value != Registry::delete_immediately)
-            {
-                Registry::delete_immediately = new_value;
-                if (delete_immediately)
-                    prune();
-            }
-        }
 };
 
 static RegistryImpl defaultRegister;
@@ -742,6 +772,9 @@ Registry& getRegistry()
 {
     return defaultRegister;
 }
+
+#undef  read_lock
+#define read_lock() std::unique_lock<std::mutex>    hidden_rd_lock(defaultRegister.rd_lock)
 
 class StaticInitializer {
     public:
@@ -768,7 +801,7 @@ String::String(const char * const chars, SerializationContext *psc): id(0)
 {
     if (NULL == psc)
         throw std::logic_error("sstring::RegistryImpl::load invalid context thread local");
-    bind(defaultRegister.acquire_cchars(chars));
+    id = defaultRegister.acquire_cchars(chars);
     setSerializationContext(psc);
     if (debug_string)
     {
@@ -786,7 +819,7 @@ String::String(const std::string& strng, SerializationContext *psc): id(0)
 {
     if (NULL == psc)
         throw std::logic_error("sstring::RegistryImpl::load invalid context thread local");
-    bind(defaultRegister.acquire_cchars(strng.c_str()));
+    id = defaultRegister.acquire_cchars(strng.c_str());
     setSerializationContext(psc);
     if (debug_string)
     {
@@ -817,26 +850,29 @@ String::String(const String &sstr): id(0)
     }
 }
 
-String::String(unsigned new_id): id(0)
-{
-    if (new_id)
-    {
-        if(defaultRegister.getcc_count(new_id)==0)
-        {
-            // bind to unknown string.
-            std::cerr << "sstring::String::String(unsigned id) " << id << "is not present in the registry" << std::endl;
-            throw std::logic_error("sstring::String::String(unsigned id) id is not present in the registry");
-        }
-        id=new_id;
-        refup();
-        if (debug_string)
-        {
-            const rc_cstr *pcc = defaultRegister.getcc(id);
-            cout << this << " String(id) cs=" << pcc  << " ref_count=" << pcc->v_ref_count() << " id=" << id << ", " << pcc->v_id() <<  nl;
-            cout << "   +++ " << pcc->v_str() <<  nl;
-        }
-    }
-}
+//String::String(unsigned new_id): id(0)
+//{
+//    if (new_id)
+//    {
+//        read_lock();    // halt prune
+//        if(defaultRegister.getcc_count(new_id)==0)
+//        {
+//            read_unlock();
+//            // bind to unknown string.
+//            std::cerr << "sstring::String::String(unsigned id) " << id << "is not present in the registry" << std::endl;
+//            throw std::logic_error("sstring::String::String(unsigned id) id is not present in the registry");
+//        }
+//        id=new_id;
+//        refup();
+//        read_unlock();
+//        if (debug_string)
+//        {
+//            const rc_cstr *pcc = defaultRegister.getcc(id);
+//            cout << this << " String(id) cs=" << pcc  << " ref_count=" << pcc->v_ref_count() << " id=" << id << ", " << pcc->v_id() <<  nl;
+//            cout << "   +++ " << pcc->v_str() <<  nl;
+//        }
+//    }
+//}
 
 void String::refup()
 {
@@ -850,15 +886,21 @@ void String::refdn()
 
 void String::bind(unsigned new_id)
 {
+//    read_lock();
     if (debug_string)
         cout << this << " bind(" << ")" << new_id << nl;
 
     // assign to self
     if (new_id == id)
+    {
+//        read_unlock();
         return;
+    }
 
+    bdrwlock::read_lock_guard   rdlockg(defaultRegister.id_cc_lock);
     if(new_id && (defaultRegister.getcc_count(new_id)==0))
     {
+        rdlockg.unlock();  // not necessary, but unlock earlier.
         // bind to unknown string.
         std::cerr << " bind to " << new_id << " failed" << std::endl;
         throw std::logic_error("sstring::String::bind(unsigned id) id is not present in the registry");
@@ -876,14 +918,10 @@ void String::bind(unsigned new_id)
         id=0;
     }
 
-    if (new_id == 0)
-    {
-        id = 0;
-        return;
-    }
-
-    id=new_id;
-    refup();
+    id = new_id;
+    if (id)
+        refup();
+    //rdlockg.unlock();
 }
 
 String::~String()
