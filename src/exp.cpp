@@ -36,6 +36,8 @@ using namespace std;
 #include "sstring.h"
 const bool cc_dump=false;
 
+#define CC_DUMP() if (cc_dump) {  sstring::getRegistry().dump(); }
+
 vector<sstring::String> strings;
 
 void testSC(void);
@@ -56,8 +58,9 @@ void test0(void)
 
     std::string stdaardvark("Aardvark");
     sstring::getRegistry().load("data/exp_cchars.dat");
-if(cc_dump)
-    sstring::getRegistry().dump();
+
+    CC_DUMP();
+
     strings.reserve(100);
     if (true)
     {
@@ -77,8 +80,9 @@ std::cout << "== prune test  " << std::endl;
     std::cout << *ctcs << std::endl;
     delete ctcs;
     sstring::getRegistry().prune();
-if(cc_dump)
-    sstring::getRegistry().dump();
+
+    CC_DUMP();
+
 
     if (true)
     {
@@ -96,15 +100,17 @@ std::cout << "== Phase II  " << std::endl;
         std::cout << *zambia2 << std::endl;
         delete zambia2;
         
-if(cc_dump)
-    sstring::getRegistry().dump();
+
+        CC_DUMP();
+
 
         sstring::getRegistry().save("data/exp_cchars.dat");
     }
 
     std::cout << "---------------" << std::endl;
-if(cc_dump)
-    sstring::getRegistry().dump();
+
+    CC_DUMP();
+
     if(true)
     {
 std::cout << "== Phase III  (" << strings.size() << ")" << std::endl;
@@ -130,8 +136,9 @@ std::cout << "(" << strings.size() << ")" << std::endl;
             std::cout << strings[ix] << std::endl;
         }
         sstring::getRegistry().save("data/exp_cchars.dat");
-if(cc_dump)
-    sstring::getRegistry().dump();
+
+        CC_DUMP();
+
         
         std::ofstream ofs("data/exp_sstrings.dat");
         if (ofs.is_open())
